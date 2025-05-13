@@ -1,30 +1,32 @@
-#version: '3.8'
-
 services:
     redis:
         image: redis:7
         ports:
         - "6379:6379"
-    app:
-        build: 
-            context: .
-        ports:
-            - "8080:8080"
-        depends_on:
-            redis:
-                condition: service-healthy
-            db:
-                condition: service-healthy
-        environment:
-            - DB_HOST=db
-            - DB_USER=${DB_USER}
-            - DB_PASSWORD=${DB_PASSWORD}
-            - DB_NAME=${DB_NAME}
-            - DB_PORT=5432
-    frontend:
-        #ToDo
+        env_file:
+            - config/.env
+        healthcheck:
+            test: ["CMD","redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # app:
+    #     build: 
+    #         context: .
+    #     ports:
+    #         - "8080:8080"
+    #     depends_on:
+    #         redis:
+    #             condition: service_healthy
+    #         db:
+    #             condition: service_healthy
+
     db:
-        image: postgres:16
+        image: postgres:15
+        container_name: MarkerFlowDB
+        env_file:
+            - config/.env
         environment:
             POSTGRES_USER: ${DB_USER}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -35,8 +37,23 @@ services:
             timeout: 5s
             retries: 5
         volumes:
-          - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-          #- db-data:/var/lib/postgresql/data
+          - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+          # - db-data:/var/lib/postgresql/data
 
+    exchange1:
+        image: exchange1
+        container_name: exchange1
+        ports:
+            - "40101:40101"
 
+    exchange2:
+        image: exchange2
+        container_name: exchange2
+        ports:
+            - "40102:40102"
 
+    exchange3:
+        image: exchange3
+        container_name: exchange3
+        ports:
+            - "40103:40103"

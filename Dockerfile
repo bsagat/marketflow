@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY . .
 
-RUN go build -o main ./cmd
+RUN go build -o marketflow ./cmd
 
 EXPOSE 8080
 
-CMD ["./main"]
+CMD ["./marketflow"]
