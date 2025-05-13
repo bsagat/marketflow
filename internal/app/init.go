@@ -19,6 +19,7 @@ func SetConfig() error {
 	return nil
 }
 
+// Setup function sets connection to the adapters
 func Setup() {
 
 }
