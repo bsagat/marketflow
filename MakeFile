@@ -1,4 +1,4 @@
-DCOMPOSE = docker-compose -f scripts/docker-compose.yml
+DCOMPOSE = docker-compose
 
 .PHONY: up down restart logs
 
