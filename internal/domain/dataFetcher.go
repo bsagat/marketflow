@@ -2,6 +2,7 @@ package domain
 
 import "time"
 
+// Raw Data from Exchanges
 type Data struct {
 	ExchangeName string
 	Symbol       string  `json:"symbol"`
@@ -9,6 +10,7 @@ type Data struct {
 	Timestamp    int64   `json:"timestamp"`
 }
 
+// Aggregated data
 type ExchangeData struct {
 	Pair_name     string
 	Exchange      string
@@ -16,11 +18,4 @@ type ExchangeData struct {
 	Average_price float64
 	Min_price     float64
 	Max_price     float64
-}
-
-type ExchangePrices struct {
-	Min   float64
-	Max   float64
-	Sum   float64
-	Count int
 }
