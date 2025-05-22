@@ -1,15 +1,28 @@
-DCOMPOSE = docker-compose
+PROJECT_NAME=marketflow
 
-.PHONY: up down restart logs
+EXCH1=exchange_images/exchange1_amd64.tar
+EXCH2=exchange_images/exchange2_amd64.tar
+EXCH3=exchange_images/exchange3_amd64.tar
 
-up:
-	$(DCOMPOSE) up --build
+DC=docker-compose -f build/docker-compose.yml
+
+load-images:
+	@echo "🌀 Loading exchange images..."
+	docker load -i $(EXCH1)
+	docker load -i $(EXCH2)
+	docker load -i $(EXCH3)
+
+up: load-images
+	@echo "🚀 Starting $(PROJECT_NAME)..."
+	$(DC) up --build
 
 down:
-	$(DCOMPOSE) down
+	@echo "🛑 Stopping $(PROJECT_NAME)..."
+	$(DC) down
 
-restart:
-	$(DCOMPOSE) down && $(DCOMPOSE) up --build
+restart: down up
 
-logs:
-	$(DCOMPOSE) logs -f
+nuke:
+	@echo "💣 Removing all containers, networks, and volumes..."
+	$(DC) down -v
+
