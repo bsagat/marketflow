@@ -20,10 +20,10 @@ type Exchange struct {
 	messageChan chan string
 }
 
-var AggregatedbySecond = make(map[int][3]domain.ExchangePrices)
-
 type LiveMode struct {
 }
+
+var _ domain.DataFetcher = (*LiveMode)(nil)
 
 func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
 	dataFlows := [3]chan domain.Data{make(chan domain.Data), make(chan domain.Data), make(chan domain.Data)}
