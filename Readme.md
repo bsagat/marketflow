@@ -23,7 +23,7 @@ cd marketflow
 
 ```bash
 # Database configs
-DB_HOST=db
+DB_HOST=db_host
 DB_USER=Investor667
 DB_PASSWORD=superpassword
 DB_NAME=DBName
