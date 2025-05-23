@@ -3,18 +3,22 @@ version: "3.8"
 services:
   redis:
     image: redis:7
+    container_name: MarketFlowCache
     env_file:
       - .env
     ports:
       - "${CACHE_PORT}:6379"
+    command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
     environment:
       REDIS_HOST: ${CACHE_HOST}
       REDIS_PORT: ${CACHE_PORT}
+      REDIS_PASSWORD: ${CACHE_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${CACHE_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+
 
   db:
     image: postgres:15

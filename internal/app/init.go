@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	datafetcher "marketflow/internal/adapters/dataFetcher"
 	"marketflow/internal/api/handlers"
 	"marketflow/internal/domain"
 	"marketflow/internal/pkg/envzilla"
+	"marketflow/internal/service"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,9 +23,12 @@ func init() {
 }
 
 // Setup function sets connection to the adapters
-func Setup() *http.ServeMux {
-	modeHandler := handlers.NewSwitchModeHandler()
-	healthHandler := handlers.NewSystemHealthHandler()
+func Setup(db domain.Database, cacheMemory domain.CacheMemory) *http.ServeMux {
+	datafetchServ := service.NewDataFetcher(datafetcher.NewLiveModeFetcher(), db, cacheMemory)
+	healthCheckServ := service.NewSystemHealthService(datafetchServ.Datafetcher, db, cacheMemory)
+
+	modeHandler := handlers.NewSwitchModeHandler(datafetchServ.Datafetcher)
+	healthHandler := handlers.NewSystemHealthHandler(healthCheckServ)
 	marketHandler := handlers.NewMarketDataHandler()
 
 	mux := http.NewServeMux()

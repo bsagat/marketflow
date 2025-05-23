@@ -12,10 +12,10 @@ type Data struct {
 
 // Aggregated data
 type ExchangeData struct {
-	Pair_name     string
-	Exchange      string
-	Timestamp     time.Time
-	Average_price float64
-	Min_price     float64
-	Max_price     float64
+	Pair_name     string    `json:"pair_name"`
+	Exchange      string    `json:"exchange"`
+	Timestamp     time.Time `json:"timestamp"`
+	Average_price float64   `json:"average_price"`
+	Min_price     float64   `json:"min_price"`
+	Max_price     float64   `json:"max_price"`
 }

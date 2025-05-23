@@ -2,13 +2,21 @@ package main
 
 import (
 	"log"
+	cache "marketflow/internal/adapters/cacheMemory"
+	"marketflow/internal/adapters/repository"
 	"marketflow/internal/app"
 	"marketflow/internal/domain"
 	"net/http"
 )
 
 func main() {
-	router := app.Setup()
+	cacheMemory := cache.ConnectCacheMemory()
+	repo := repository.ConnectDB()
+
+	defer cacheMemory.Cache.Close()
+	defer repo.Db.Close()
+
+	router := app.Setup(repo, cacheMemory)
 
 	log.Printf("Starting server at %s... \n", *domain.Port)
 	if err := http.ListenAndServe("localhost:"+*domain.Port, router); err != nil {

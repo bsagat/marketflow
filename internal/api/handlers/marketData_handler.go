@@ -23,6 +23,7 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 	case "highest":
 	case "lowest":
 	case "average":
+	case "latest":
 	default:
 		http.Error(w, fmt.Sprintf("metric value is invalid %s , must be (highest, lowest, average)", metric), http.StatusBadRequest)
 		return
@@ -64,6 +65,7 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByAll(w http.ResponseWriter, r
 	case "highest":
 	case "lowest":
 	case "average":
+	case "latest":
 	default:
 		http.Error(w, fmt.Sprintf("metric value is invalid %s , must be (highest, lowest, average)", metric), http.StatusBadRequest)
 		return

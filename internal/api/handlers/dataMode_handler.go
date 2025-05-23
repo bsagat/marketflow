@@ -1,16 +1,26 @@
 package handlers
 
 import (
-	"fmt"
+	"marketflow/internal/domain"
 	"net/http"
 )
 
-type SwitchModeHTTPHandler struct{}
+type SwitchModeHTTPHandler struct {
+	Datafetcher domain.DataFetcher
+}
 
-func NewSwitchModeHandler() *SwitchModeHTTPHandler {
-	return &SwitchModeHTTPHandler{}
+func NewSwitchModeHandler(Datafetcher domain.DataFetcher) *SwitchModeHTTPHandler {
+	return &SwitchModeHTTPHandler{Datafetcher: Datafetcher}
 }
 
 func (h *SwitchModeHTTPHandler) SwitchMode(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.PathValue("mode"))
+	mode := r.PathValue("mode")
+	switch mode {
+	case "test":
+		h.Datafetcher.Close()
+
+	case "live":
+	default:
+		// error mazafaka
+	}
 }

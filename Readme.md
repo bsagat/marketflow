@@ -32,6 +32,7 @@ DB_PORT=5432
 # Cache memory configs
 CACHE_HOST=cache_host
 CACHE_PORT=6379
+CACHE_PASSWORD=superPassword
 ```
 
 ### 3. Load exchange images
