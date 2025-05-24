@@ -18,6 +18,10 @@ type Database interface {
 }
 
 // For services
-type SystemHealthServ interface {
+type DataModeService interface {
+	GetAggregatedData(lastNSeconds int) map[string]ExchangeData
+	MergeAggregatedData() map[string]ExchangeData
+	SwitchMode(mode string) error
 	CheckHealth() []ConnMsg
+	ListenAndSave()
 }

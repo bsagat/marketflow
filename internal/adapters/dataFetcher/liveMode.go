@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"log/slog"
 	"marketflow/internal/domain"
@@ -53,6 +52,10 @@ func (m *LiveMode) CheckHealth() error {
 
 func (m *LiveMode) Close() {
 	for i := 0; i < len(m.Exchanges); i++ {
+		if m.Exchanges[i] != nil {
+			break
+		}
+
 		if err := m.Exchanges[i].conn.Close(); err != nil {
 			log.Println("Failed to close connection: ", err.Error())
 		}
@@ -70,8 +73,9 @@ func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
 		wg.Add(1)
 		exch, err := GenerateExchange(strconv.Itoa(i+1), "0.0.0.0:"+ports[i])
 		if err != nil {
-			log.Printf("Failed to connect exchange number: %d, error: %s", i, err.Error())
-			return nil
+			log.Printf("Failed to connect exchange number: %d, error: %s", i+1, err.Error())
+			wg.Done()
+			continue
 		}
 
 		// Receive data from the server
@@ -93,7 +97,7 @@ func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
 			m.Exchanges[i].conn.Close()
 		}
 
-		fmt.Println("All workers have finished processing.")
+		slog.Debug("All workers have finished processing.")
 	}()
 	return aggregated
 }
@@ -102,11 +106,8 @@ func Aggregate(mergedCh chan []domain.Data) chan map[string]domain.ExchangeData 
 	aggregatedCh := make(chan map[string]domain.ExchangeData)
 
 	go func() {
-		defer close(aggregatedCh)
 
 		for dataBatch := range mergedCh {
-			fmt.Println(len(dataBatch))
-
 			exchangesData := make(map[string]domain.ExchangeData)
 			counts := make(map[string]int)
 			sums := make(map[string]float64)
@@ -154,6 +155,7 @@ func Aggregate(mergedCh chan []domain.Data) chan map[string]domain.ExchangeData 
 
 			aggregatedCh <- exchangesData
 		}
+		close(aggregatedCh)
 	}()
 
 	return aggregatedCh
@@ -168,6 +170,7 @@ func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 	go func() {
 		defer close(mergedCh)
 
+	mainLoop:
 		for {
 			select {
 			case e1, ok := <-dataFlows[0]:
@@ -202,7 +205,7 @@ func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 			muClosed.Lock()
 			if closedCount == 3 {
 				muClosed.Unlock()
-				break
+				break mainLoop
 			}
 			muClosed.Unlock()
 		}
@@ -210,30 +213,32 @@ func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 
 	t := time.NewTicker(time.Second)
 	rawData := make([]domain.Data, 0)
+	done := make(chan bool)
 	mu := sync.Mutex{}
 
 	go func() {
 		defer close(ch)
 
-		for tick := range t.C {
-			slog.Debug(tick.String())
+	mainLoop:
+		for {
+			select {
+			case tick := <-t.C:
+				slog.Debug(tick.String())
+				mu.Lock()
 
-			mu.Lock()
-			if len(rawData) == 0 {
-				mu.Unlock()
-				select {
-				case _, ok := <-mergedCh:
-					if !ok {
-						return
-					}
-				default:
+				if len(rawData) == 0 {
+					mu.Unlock()
+					continue
 				}
-				continue
+				ch <- rawData
+				rawData = make([]domain.Data, 0)
+
+				mu.Unlock()
+			case <-done:
+				break mainLoop
 			}
-			ch <- rawData
-			rawData = make([]domain.Data, 0)
-			mu.Unlock()
 		}
+
 	}()
 
 	go func() {
@@ -243,6 +248,8 @@ func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 			mu.Unlock()
 		}
 
+		done <- true
+		close(done)
 		t.Stop()
 	}()
 
@@ -262,15 +269,47 @@ func GenerateExchange(number string, address string) (*Exchange, error) {
 	return exchangeServ, nil
 }
 
-// FetchData reads data from the connection and sends it to the channel
+func (exch *Exchange) Reconnect(address string) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		time.Sleep(2 * time.Second)
+		exch.conn, err = net.Dial("tcp", address)
+		if err == nil {
+			slog.Info("Reconnected to exchange: " + exch.number)
+			return nil
+		}
+		slog.Warn("Reconnect attempt failed: " + err.Error())
+	}
+	return err
+}
+
 func (exch *Exchange) FetchData(wg *sync.WaitGroup) {
 	defer wg.Done()
-	scanner := bufio.NewScanner(exch.conn)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		exch.messageChan <- line
+	scanner := bufio.NewScanner(exch.conn)
+	address := exch.conn.RemoteAddr().String()
+
+	log.Println("Starting reading data on exchange: ", exch.number)
+
+	for {
+		for scanner.Scan() {
+			line := scanner.Text()
+			exch.messageChan <- line
+		}
+
+		log.Printf("Connection lost on exchange %s. Reconnecting...\n", exch.number)
+
+		err := exch.Reconnect(address)
+		if err != nil {
+			log.Printf("Failed to reconnect exchange %s: %v", exch.number, err)
+			break
+		}
+
+		// пересоздаём scanner после переподключения
+		scanner = bufio.NewScanner(exch.conn)
 	}
+
+	log.Println("Giving up on exchange: ", exch.number)
 	close(exch.messageChan)
 }
 
@@ -288,6 +327,7 @@ func (exch *Exchange) SetWorkers(globalWg *sync.WaitGroup, fan_in chan domain.Da
 
 	go func() {
 		workerWg.Wait()
+		slog.Debug("Local workers finished work in exchange " + exch.number)
 		close(fan_in)
 	}()
 }
