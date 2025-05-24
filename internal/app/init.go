@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	datafetcher "marketflow/internal/adapters/dataFetcher"
 	"marketflow/internal/api/handlers"
 	"marketflow/internal/domain"
 	"marketflow/internal/pkg/envzilla"
@@ -23,19 +22,17 @@ func init() {
 }
 
 // Setup function sets connection to the adapters
-func Setup(db domain.Database, cacheMemory domain.CacheMemory) *http.ServeMux {
-	datafetchServ := service.NewDataFetcher(datafetcher.NewLiveModeFetcher(), db, cacheMemory)
-	healthCheckServ := service.NewSystemHealthService(datafetchServ.Datafetcher, db, cacheMemory)
+func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetcher domain.DataFetcher) *http.ServeMux {
+	datafetchServ := service.NewDataFetcher(datafetcher, db, cacheMemory)
 
-	modeHandler := handlers.NewSwitchModeHandler(datafetchServ.Datafetcher)
-	healthHandler := handlers.NewSystemHealthHandler(healthCheckServ)
+	modeHandler := handlers.NewSwitchModeHandler(datafetchServ)
 	marketHandler := handlers.NewMarketDataHandler()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /mode/{mode}", modeHandler.SwitchMode)
 
-	mux.HandleFunc("GET /health", healthHandler.CheckHealth)
+	mux.HandleFunc("GET /health", modeHandler.CheckHealth)
 
 	mux.HandleFunc("GET /prices/{metric}/{symbol}", marketHandler.ProcessMetricQueryByAll)
 	mux.HandleFunc("GET /prices/{metric}/{exchange}/{symbol}", marketHandler.ProcessMetricQueryByExchange)

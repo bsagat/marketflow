@@ -3,19 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"marketflow/internal/domain"
 	"net/http"
 )
 
-type SystemHealthHTTPHandler struct {
-	serv domain.SystemHealthServ
-}
-
-func NewSystemHealthHandler(serv domain.SystemHealthServ) *SystemHealthHTTPHandler {
-	return &SystemHealthHTTPHandler{serv: serv}
-}
-
-func (h *SystemHealthHTTPHandler) CheckHealth(w http.ResponseWriter, r *http.Request) {
+func (h *SwitchModeHTTPHandler) CheckHealth(w http.ResponseWriter, r *http.Request) {
 	res := h.serv.CheckHealth()
 
 	// Marshalling result to JSON

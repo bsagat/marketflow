@@ -1,61 +1,95 @@
 package service
 
 import (
+	"errors"
 	"log"
 	"log/slog"
+	datafetcher "marketflow/internal/adapters/dataFetcher"
 	"marketflow/internal/domain"
 	"sync"
 	"time"
 )
 
-type DataModeService struct {
+type DataModeServiceImp struct {
 	Datafetcher domain.DataFetcher
-	DBSaver     domain.Database
-	CacheSaver  domain.CacheMemory
+	DB          domain.Database
+	Cache       domain.CacheMemory
 	DataBuffer  []map[string]domain.ExchangeData
 	mu          sync.Mutex
 }
 
-func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, CacheSaver domain.CacheMemory) *DataModeService {
-	serv := &DataModeService{Datafetcher: dataSource, DBSaver: DataSaver, CacheSaver: CacheSaver, DataBuffer: make([]map[string]domain.ExchangeData, 0)}
+func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, Cache domain.CacheMemory) *DataModeServiceImp {
+	serv := &DataModeServiceImp{Datafetcher: dataSource, DB: DataSaver, Cache: Cache, DataBuffer: make([]map[string]domain.ExchangeData, 0)}
 	serv.ListenAndSave()
 
 	return serv
 }
 
-func (serv *DataModeService) ListenAndSave() {
+func (serv *DataModeServiceImp) SwitchMode(mode string) error {
+	switch mode {
+	case "test":
+		serv.Datafetcher.Close()
+		serv.Datafetcher = datafetcher.NewTestModeFetcher()
+		serv.ListenAndSave()
+	case "live":
+		serv.Datafetcher.Close()
+		serv.Datafetcher = datafetcher.NewLiveModeFetcher()
+		serv.ListenAndSave()
+	default:
+		return errors.New("invalid mode name, must be (test or live)")
+	}
+	return nil
+}
+
+func (serv *DataModeServiceImp) ListenAndSave() {
+	log.Println("Started listening and saving...")
+
 	aggregated := serv.Datafetcher.SetupDataFetcher()
+	done := make(chan bool)
+	t := time.NewTicker(time.Minute)
 
 	go func() {
-		t := time.NewTicker(time.Minute)
-		for tick := range t.C {
-			slog.Debug(tick.String())
-			serv.mu.Lock()
 
-			merged := serv.MergeAggregatedData()
-			err := serv.DBSaver.SaveAggregatedData(merged)
-			if err != nil {
-				log.Printf("Failed to save aggregated data in database: %s \n", err.Error())
+	mainLoop:
+		for {
+			select {
+			case tick := <-t.C:
+				slog.Debug(tick.String())
+				serv.mu.Lock()
+
+				merged := serv.MergeAggregatedData()
+				err := serv.DB.SaveAggregatedData(merged)
+				if err != nil {
+					log.Printf("Failed to save aggregated data in database: %s \n", err.Error())
+				}
+
+				err = serv.Cache.SaveAggregatedData(merged)
+				if err != nil {
+					log.Printf("Failed to save aggregated data in cache: %s \n", err.Error())
+				}
+
+				serv.DataBuffer = make([]map[string]domain.ExchangeData, 0)
+				serv.mu.Unlock()
+			case <-done:
+				break mainLoop
 			}
-
-			err = serv.CacheSaver.SaveAggregatedData(merged)
-			if err != nil {
-				log.Printf("Failed to save aggregated data in cache: %s \n", err.Error())
-			}
-
-			serv.DataBuffer = make([]map[string]domain.ExchangeData, 0)
-			serv.mu.Unlock()
 		}
 	}()
 
 	go func() {
 		for data := range aggregated {
+			serv.mu.Lock()
 			serv.DataBuffer = append(serv.DataBuffer, data)
+			serv.mu.Unlock()
 		}
+		slog.Debug("Listen and Save goroutine has been finished...")
+		done <- true
+		close(done)
+		t.Stop()
 	}()
 }
 
-func (serv *DataModeService) MergeAggregatedData() map[string]domain.ExchangeData {
+func (serv *DataModeServiceImp) MergeAggregatedData() map[string]domain.ExchangeData {
 	result := make(map[string]domain.ExchangeData)
 	sums := make(map[string]float64)
 	counts := make(map[string]int)
@@ -102,7 +136,7 @@ func (serv *DataModeService) MergeAggregatedData() map[string]domain.ExchangeDat
 	return result
 }
 
-func (serv *DataModeService) GetAggregatedData(lastNSeconds int) map[string]domain.ExchangeData {
+func (serv *DataModeServiceImp) GetAggregatedData(lastNSeconds int) map[string]domain.ExchangeData {
 	cutoff := time.Now().Add(-time.Duration(lastNSeconds) * time.Second)
 
 	serv.mu.Lock()
