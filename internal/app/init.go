@@ -26,7 +26,7 @@ func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetcher domai
 	datafetchServ := service.NewDataFetcher(datafetcher, db, cacheMemory)
 
 	modeHandler := handlers.NewSwitchModeHandler(datafetchServ)
-	marketHandler := handlers.NewMarketDataHandler()
+	marketHandler := handlers.NewMarketDataHandler(datafetchServ)
 
 	mux := http.NewServeMux()
 

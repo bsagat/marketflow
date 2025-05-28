@@ -4,7 +4,7 @@ import "time"
 
 // Raw Data from Exchanges
 type Data struct {
-	ExchangeName string
+	ExchangeName string  `json:"exchange"`
 	Symbol       string  `json:"symbol"`
 	Price        float64 `json:"price"`
 	Timestamp    int64   `json:"timestamp"`
