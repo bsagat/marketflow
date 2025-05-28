@@ -52,8 +52,8 @@ func (m *LiveMode) CheckHealth() error {
 
 func (m *LiveMode) Close() {
 	for i := 0; i < len(m.Exchanges); i++ {
-		if m.Exchanges[i] != nil {
-			break
+		if m.Exchanges[i] == nil {
+			continue
 		}
 
 		if err := m.Exchanges[i].conn.Close(); err != nil {
@@ -63,7 +63,7 @@ func (m *LiveMode) Close() {
 
 }
 
-func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
+func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data) {
 	dataFlows := [3]chan domain.Data{make(chan domain.Data), make(chan domain.Data), make(chan domain.Data)}
 	ports := []string{"40101", "40102", "40103"}
 
@@ -71,7 +71,7 @@ func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
 
 	for i := 0; i < len(ports); i++ {
 		wg.Add(1)
-		exch, err := GenerateExchange(strconv.Itoa(i+1), "0.0.0.0:"+ports[i])
+		exch, err := GenerateExchange("Exchange"+strconv.Itoa(i+1), "0.0.0.0:"+ports[i])
 		if err != nil {
 			log.Printf("Failed to connect exchange number: %d, error: %s", i+1, err.Error())
 			wg.Done()
@@ -87,27 +87,41 @@ func (m *LiveMode) SetupDataFetcher() chan map[string]domain.ExchangeData {
 		m.Exchanges = append(m.Exchanges, exch)
 	}
 
+	if len(m.Exchanges) != 3 {
+		log.Fatal("Failed to connect to 3 exchanges...")
+	}
+
 	mergedCh := MergeFlows(dataFlows)
 
-	aggregated := Aggregate(mergedCh)
+	aggregated, rawDatach := Aggregate(mergedCh)
 
 	go func() {
 		wg.Wait()
 		for i := 0; i < len(m.Exchanges); i++ {
+			if m.Exchanges[i] == nil {
+				continue
+			}
 			m.Exchanges[i].conn.Close()
 		}
 
 		slog.Debug("All workers have finished processing.")
 	}()
-	return aggregated
+	return aggregated, rawDatach
 }
 
-func Aggregate(mergedCh chan []domain.Data) chan map[string]domain.ExchangeData {
+func Aggregate(mergedCh chan []domain.Data) (chan map[string]domain.ExchangeData, chan []domain.Data) {
 	aggregatedCh := make(chan map[string]domain.ExchangeData)
+	rawDataCh := make(chan []domain.Data)
 
 	go func() {
 
 		for dataBatch := range mergedCh {
+
+			// To prevent the main thread from being delayed
+			go func() {
+				rawDataCh <- dataBatch
+			}()
+
 			exchangesData := make(map[string]domain.ExchangeData)
 			counts := make(map[string]int)
 			sums := make(map[string]float64)
@@ -156,9 +170,10 @@ func Aggregate(mergedCh chan []domain.Data) chan map[string]domain.ExchangeData 
 			aggregatedCh <- exchangesData
 		}
 		close(aggregatedCh)
+		close(rawDataCh)
 	}()
 
-	return aggregatedCh
+	return aggregatedCh, rawDataCh
 }
 func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 	mergedCh := make(chan domain.Data, 15)
