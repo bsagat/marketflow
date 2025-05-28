@@ -2,7 +2,7 @@ package domain
 
 // For adapters
 type DataFetcher interface {
-	SetupDataFetcher() (chan map[string]ExchangeData, chan []Data)
+	SetupDataFetcher() (chan map[string]ExchangeData, chan []Data, error)
 	CheckHealth() error
 	Close()
 }
@@ -27,5 +27,6 @@ type DataModeService interface {
 	MergeAggregatedData() map[string]ExchangeData
 	SwitchMode(mode string) error
 	CheckHealth() []ConnMsg
-	ListenAndSave()
+	ListenAndSave() error
+	StopListening()
 }

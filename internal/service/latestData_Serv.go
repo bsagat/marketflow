@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"marketflow/internal/domain"
 	"net/http"
 )
@@ -25,5 +26,10 @@ func (serv *DataModeServiceImp) GetLatestData(exchange string, symbol string) (d
 	if err != nil {
 		return latest, http.StatusInternalServerError, err
 	}
+
+	if latest.ExchangeName == "" && latest.Price == 0 && latest.Symbol == "" && latest.Timestamp == 0 {
+		return domain.Data{}, http.StatusNotFound, errors.New("latest data is not found")
+	}
+
 	return latest, http.StatusOK, nil
 }

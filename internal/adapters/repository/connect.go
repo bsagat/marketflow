@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -15,7 +16,7 @@ type PostgresDatabase struct {
 }
 
 func ConnectDB() *PostgresDatabase {
-	log.Println("Starting database connection...")
+	slog.Info("Starting database connection...")
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -31,5 +32,7 @@ func ConnectDB() *PostgresDatabase {
 	if err := db.Ping(); err != nil {
 		log.Fatalf("Failed to send ping message to the Database %s", err.Error())
 	}
+
+	slog.Info("Database connection finished...")
 	return &PostgresDatabase{Db: db}
 }

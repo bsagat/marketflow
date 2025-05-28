@@ -1,7 +1,7 @@
 package service
 
 import (
-	"errors"
+	"context"
 	"log"
 	"log/slog"
 	datafetcher "marketflow/internal/adapters/dataFetcher"
@@ -15,78 +15,135 @@ type DataModeServiceImp struct {
 	DB          domain.Database
 	Cache       domain.CacheMemory
 	DataBuffer  []map[string]domain.ExchangeData
+	ctx         context.Context
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 	mu          sync.Mutex
 }
 
 func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, Cache domain.CacheMemory) *DataModeServiceImp {
-	serv := &DataModeServiceImp{Datafetcher: dataSource, DB: DataSaver, Cache: Cache, DataBuffer: make([]map[string]domain.ExchangeData, 0)}
-	serv.ListenAndSave()
-
-	return serv
+	ctx, cancel := context.WithCancel(context.Background())
+	return &DataModeServiceImp{
+		Datafetcher: dataSource,
+		DB:          DataSaver,
+		Cache:       Cache,
+		DataBuffer:  make([]map[string]domain.ExchangeData, 0),
+		ctx:         ctx,
+		cancel:      cancel,
+	}
 }
+
+var _ (domain.DataModeService) = (*DataModeServiceImp)(nil)
 
 func (serv *DataModeServiceImp) SwitchMode(mode string) error {
 	switch mode {
 	case "test":
 		serv.Datafetcher.Close()
 		serv.Datafetcher = datafetcher.NewTestModeFetcher()
-		serv.ListenAndSave()
+		if err := serv.ListenAndSave(); err != nil {
+			return err
+		}
 	case "live":
 		serv.Datafetcher.Close()
 		serv.Datafetcher = datafetcher.NewLiveModeFetcher()
-		serv.ListenAndSave()
+		if err := serv.ListenAndSave(); err != nil {
+			return err
+		}
 	default:
-		return errors.New("invalid mode name, must be (test or live)")
+		return domain.ErrInvalidModeVal
 	}
 	return nil
 }
 
-func (serv *DataModeServiceImp) ListenAndSave() {
-	log.Println("Started listening and saving...")
+func (serv *DataModeServiceImp) StopListening() {
+	serv.cancel()
+	serv.Datafetcher.Close()
+	serv.wg.Wait()
+	slog.Info("Listen and save goroutine has been finished...")
+}
 
-	aggregated := serv.Datafetcher.SetupDataFetcher()
-	done := make(chan bool)
-	t := time.NewTicker(time.Minute)
+func (serv *DataModeServiceImp) ListenAndSave() error {
+	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher()
+	if err != nil {
+		return err
+	}
+	serv.wg.Add(3)
 
 	go func() {
+		defer serv.wg.Done()
+		serv.SaveLatestData(rawDataCh)
+	}()
 
-	mainLoop:
+	go func() {
+		defer serv.wg.Done()
+		t := time.NewTicker(time.Minute)
+		defer t.Stop()
+
 		for {
 			select {
-			case tick := <-t.C:
-				slog.Debug(tick.String())
+			case <-serv.ctx.Done():
+				return
+			case <-t.C:
 				serv.mu.Lock()
-
 				merged := serv.MergeAggregatedData()
-				err := serv.DB.SaveAggregatedData(merged)
-				if err != nil {
-					log.Printf("Failed to save aggregated data in database: %s \n", err.Error())
-				}
-
-				err = serv.Cache.SaveAggregatedData(merged)
-				if err != nil {
-					log.Printf("Failed to save aggregated data in cache: %s \n", err.Error())
-				}
-
-				serv.DataBuffer = make([]map[string]domain.ExchangeData, 0)
+				serv.DB.SaveAggregatedData(merged)
+				serv.Cache.SaveAggregatedData(merged)
+				serv.DataBuffer = nil
 				serv.mu.Unlock()
-			case <-done:
-				break mainLoop
 			}
 		}
 	}()
 
 	go func() {
-		for data := range aggregated {
-			serv.mu.Lock()
-			serv.DataBuffer = append(serv.DataBuffer, data)
-			serv.mu.Unlock()
+		defer serv.wg.Done()
+		for {
+			select {
+			case <-serv.ctx.Done():
+				return
+			case data, ok := <-aggregated:
+				if !ok {
+					return
+				}
+				serv.mu.Lock()
+				serv.DataBuffer = append(serv.DataBuffer, data)
+				serv.mu.Unlock()
+			}
 		}
-		slog.Debug("Listen and Save goroutine has been finished...")
-		done <- true
-		close(done)
-		t.Stop()
 	}()
+
+	return nil
+}
+
+func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
+	for rawData := range rawDataCh {
+		latestData := make(map[string]domain.Data)
+		for i := len(rawData) - 1; i >= 0; i-- {
+			if rawData[i].ExchangeName == "" || rawData[i].Symbol == "" {
+				continue
+			}
+
+			exchKey := "latest " + rawData[i].ExchangeName + " " + rawData[i].Symbol
+			allKey := "latest " + "All" + " " + rawData[i].Symbol
+
+			if _, exist := latestData[exchKey]; !exist {
+				latestData[exchKey] = rawData[i]
+			}
+
+			if _, exist := latestData[allKey]; !exist {
+				latestData[allKey] = rawData[i]
+			}
+
+			// Break loop if we find all latest prices
+			if len(latestData) == 20 {
+				break
+			}
+		}
+
+		if err := serv.Cache.SaveLatestData(latestData); err != nil {
+			log.Println("Failed to save latest data to cache: ", err.Error())
+		}
+
+	}
 }
 
 func (serv *DataModeServiceImp) MergeAggregatedData() map[string]domain.ExchangeData {
@@ -132,7 +189,6 @@ func (serv *DataModeServiceImp) MergeAggregatedData() map[string]domain.Exchange
 			result[key] = item
 		}
 	}
-
 	return result
 }
 
