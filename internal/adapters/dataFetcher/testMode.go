@@ -14,13 +14,13 @@ func NewTestModeFetcher() *TestMode {
 	return &TestMode{}
 }
 
-func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data) {
+func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
 	ch := make(chan map[string]domain.ExchangeData)
 	rawDataCh := make(chan []domain.Data)
 
 	// close(ch)
 	// close(rawDataCh) // обязательно
-	return ch, rawDataCh
+	return ch, rawDataCh, nil
 }
 
 func (m *TestMode) CheckHealth() error {

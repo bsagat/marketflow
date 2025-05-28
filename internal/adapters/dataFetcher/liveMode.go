@@ -18,6 +18,7 @@ import (
 type Exchange struct {
 	number      string
 	conn        net.Conn
+	closeCh     chan bool
 	messageChan chan string
 }
 
@@ -52,18 +53,21 @@ func (m *LiveMode) CheckHealth() error {
 
 func (m *LiveMode) Close() {
 	for i := 0; i < len(m.Exchanges); i++ {
-		if m.Exchanges[i] == nil {
+		if m.Exchanges[i] == nil || m.Exchanges[i].conn == nil {
 			continue
 		}
 
 		if err := m.Exchanges[i].conn.Close(); err != nil {
 			log.Println("Failed to close connection: ", err.Error())
+			continue
 		}
+
+		m.Exchanges[i].closeCh <- true
 	}
 
 }
 
-func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data) {
+func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
 	dataFlows := [3]chan domain.Data{make(chan domain.Data), make(chan domain.Data), make(chan domain.Data)}
 	ports := []string{"40101", "40102", "40103"}
 
@@ -88,7 +92,7 @@ func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 	}
 
 	if len(m.Exchanges) != 3 {
-		log.Fatal("Failed to connect to 3 exchanges...")
+		return nil, nil, errors.New("failed to connect to 3 exchanges")
 	}
 
 	mergedCh := MergeFlows(dataFlows)
@@ -101,12 +105,14 @@ func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 			if m.Exchanges[i] == nil {
 				continue
 			}
-			m.Exchanges[i].conn.Close()
+			if m.Exchanges[i].conn != nil {
+				m.Exchanges[i].conn.Close()
+			}
 		}
 
-		slog.Debug("All workers have finished processing.")
+		slog.Info("All workers have finished processing.")
 	}()
-	return aggregated, rawDatach
+	return aggregated, rawDatach, nil
 }
 
 func Aggregate(mergedCh chan []domain.Data) (chan map[string]domain.ExchangeData, chan []domain.Data) {
@@ -304,27 +310,43 @@ func (exch *Exchange) FetchData(wg *sync.WaitGroup) {
 	scanner := bufio.NewScanner(exch.conn)
 	address := exch.conn.RemoteAddr().String()
 
+	closeCh := make(chan bool, 1)
+	exch.closeCh = closeCh
+
+	reconnect := true
+	mu := sync.Mutex{}
+
+	go func() {
+		<-closeCh
+		mu.Lock()
+		reconnect = false
+		mu.Unlock()
+	}()
+
 	log.Println("Starting reading data on exchange: ", exch.number)
 
 	for {
-		for scanner.Scan() {
+		for scanner.Scan() && reconnect {
 			line := scanner.Text()
 			exch.messageChan <- line
 		}
 
 		log.Printf("Connection lost on exchange %s. Reconnecting...\n", exch.number)
 
-		err := exch.Reconnect(address)
-		if err != nil {
-			log.Printf("Failed to reconnect exchange %s: %v", exch.number, err)
+		if reconnect {
+			if err := exch.Reconnect(address); err != nil {
+				log.Printf("Failed to reconnect exchange %s: %v", exch.number, err)
+				break
+			}
+
+			scanner = bufio.NewScanner(exch.conn)
+		} else {
 			break
 		}
-
-		// пересоздаём scanner после переподключения
-		scanner = bufio.NewScanner(exch.conn)
 	}
 
 	log.Println("Giving up on exchange: ", exch.number)
+	close(closeCh)
 	close(exch.messageChan)
 }
 

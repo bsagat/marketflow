@@ -22,9 +22,7 @@ func init() {
 }
 
 // Setup function sets connection to the adapters
-func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetcher domain.DataFetcher) *http.ServeMux {
-	datafetchServ := service.NewDataFetcher(datafetcher, db, cacheMemory)
-
+func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetchServ *service.DataModeServiceImp) *http.ServeMux {
 	modeHandler := handlers.NewSwitchModeHandler(datafetchServ)
 	marketHandler := handlers.NewMarketDataHandler(datafetchServ)
 
