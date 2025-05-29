@@ -181,6 +181,7 @@ func Aggregate(mergedCh chan []domain.Data) (chan map[string]domain.ExchangeData
 
 	return aggregatedCh, rawDataCh
 }
+
 func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 	mergedCh := make(chan domain.Data, 15)
 	ch := make(chan []domain.Data, 3)

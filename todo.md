@@ -22,7 +22,6 @@ type ExchangeData struct{
 7) Реализовать API endpoint-ы 
 8) Написать help функцию 🗿✅
 9) Тестирование 
-10) Улучшить логику переменной среды(добавить парсинг порта приложения и портов трех бирж)
 
 
 ### Теоритическая часть 
@@ -35,3 +34,44 @@ type ExchangeData struct{
 Документация кода (комментарий, инструкции к сущностям кода)
 
 ### Optional 
+
+
+
+Domain -> health chek -> ConnMs?
+Domain -> interfaces are these intrfcs implemeted?  
+Getenv?
+CacheMem -> Helth_chekc?
+
+
+
+1. very first time: 
+docker load -i build/exchange_images/exchange1_amd64.tar
+docker load -i build/exchange_images/exchange2_amd64.tar
+docker load -i build/exchange_images/exchange3_amd64.tar
+
+2. docker-compose -f build/docker-compose.yml up
+
+3. nc 127.0.0.1 40101 
+    |
+    ->to test
+
+4. go run ./cmd
+
+
+localhost:8080/health
+Check health
+
+localhost:8080/mode/live
+Change test mode to live mode
+
+localhost:8080/prices/latest/Exchange1/BTCUSDT
+latest data from specific exchange
+
+localhost:8080/prices/latest/BTCUSDT
+latest data from all exchanges
+
+BTCUSDT
+DOGEUSDT
+TONUSDT
+SOLUSDT
+ETHUSDT
