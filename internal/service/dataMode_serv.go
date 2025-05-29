@@ -63,7 +63,7 @@ func (serv *DataModeServiceImp) StopListening() {
 }
 
 func (serv *DataModeServiceImp) ListenAndSave() error {
-	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher()
+	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher() // function of life mode 
 	if err != nil {
 		return err
 	}
