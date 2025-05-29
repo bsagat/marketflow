@@ -17,8 +17,8 @@ func NewTestModeFetcher() *TestMode {
 }
 
 func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error){
-	ch := make(chan map[string]domain.ExchangeData)
-	ch2 := make(chan []domain.Data)
+	ch := make(chan map[string]domain.ExchangeData, 100)
+	ch2 := make(chan []domain.Data, 100)
 	pairs := []string{"BTCUSDT", "DOGEUSDT", "TONUSDT", "SOLUSDT", "ETHUSDT"}
 	exchanges := []string{"exchange1", "exchange2", "exchange3"}
 	basePrices := map[string]float64{
@@ -26,16 +26,19 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 	}
 
 	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
+		ticker := time.NewTicker(1000 * time.Millisecond)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-m.stop:
 				close(ch)
+                close(ch2)
+                // close(m.messageChan)
 				return
 			case <-ticker.C:
 				data := make(map[string]domain.ExchangeData)
+				rawData := make([]domain.Data, 0, len(pairs)*len(exchanges))
 				for _, ex := range exchanges {
 					for _, pair := range pairs {
 						// Generate random price fluctuation (±15%)
@@ -48,9 +51,16 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 							Min_price:     price, // Set Min/Max same for real-time update
 							Max_price:     price,
 						}
+						rawData = append(rawData, domain.Data{
+                            ExchangeName: ex,
+                            Symbol:       pair,
+                            Price:        price,
+                            Timestamp:    time.Now(),
+                        })
 					}
 				}
 				ch <- data
+				ch2 <- rawData
 
 			}
 		}

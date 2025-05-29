@@ -106,6 +106,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 				}
 				serv.mu.Lock()
 				serv.DataBuffer = append(serv.DataBuffer, data)
+				// slog.Info("Received data", "buffer_size", len(serv.DataBuffer))  			// Tick log
 				serv.mu.Unlock()
 			}
 		}

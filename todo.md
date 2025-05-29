@@ -75,3 +75,6 @@ DOGEUSDT
 TONUSDT
 SOLUSDT
 ETHUSDT
+
+
+In test mode ticks goes much faster tahn in live. In live it is is like one per second
