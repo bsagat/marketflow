@@ -5,7 +5,7 @@ services:
     image: redis:7
     container_name: MarketFlowCache
     env_file:
-      - .env
+      - user_friendly.env
     ports:
       - "${CACHE_PORT}:6379"
     command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
@@ -22,9 +22,9 @@ services:
 
   db:
     image: postgres:15
-    container_name: MarkerFlowDB
+    container_name: MarketFlowDB
     env_file:
-      - .env
+      - user_friendly.env
     ports:
       - "${DB_PORT}:5432"
     environment:

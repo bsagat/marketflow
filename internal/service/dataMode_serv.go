@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"log/slog"
 	datafetcher "marketflow/internal/adapters/dataFetcher"
 	"marketflow/internal/domain"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -35,24 +36,29 @@ func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, Ca
 
 var _ (domain.DataModeService) = (*DataModeServiceImp)(nil)
 
-func (serv *DataModeServiceImp) SwitchMode(mode string) error {
+func (serv *DataModeServiceImp) SwitchMode(mode string) (int, error) {
+	// Check if is current datafetcher mode equal to changing mode
+	if _, ok := serv.Datafetcher.(*datafetcher.LiveMode); (ok && mode == "live") || (!ok && mode == "test") {
+		return http.StatusBadRequest, fmt.Errorf("data mode is already switched to %s", mode)
+	}
+
 	switch mode {
 	case "test":
 		serv.Datafetcher.Close()
 		serv.Datafetcher = datafetcher.NewTestModeFetcher()
 		if err := serv.ListenAndSave(); err != nil {
-			return err
+			return http.StatusInternalServerError, err
 		}
 	case "live":
 		serv.Datafetcher.Close()
 		serv.Datafetcher = datafetcher.NewLiveModeFetcher()
 		if err := serv.ListenAndSave(); err != nil {
-			return err
+			return http.StatusInternalServerError, err
 		}
 	default:
-		return domain.ErrInvalidModeVal
+		return http.StatusBadRequest, domain.ErrInvalidModeVal
 	}
-	return nil
+	return http.StatusOK, nil
 }
 
 func (serv *DataModeServiceImp) StopListening() {
@@ -63,7 +69,7 @@ func (serv *DataModeServiceImp) StopListening() {
 }
 
 func (serv *DataModeServiceImp) ListenAndSave() error {
-	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher() // function of life mode 
+	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher()
 	if err != nil {
 		return err
 	}
@@ -106,7 +112,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 				}
 				serv.mu.Lock()
 				serv.DataBuffer = append(serv.DataBuffer, data)
-				// slog.Info("Received data", "buffer_size", len(serv.DataBuffer))  			// Tick log
+				slog.Debug("Received data", "buffer_size", len(serv.DataBuffer)) // Tick log
 				serv.mu.Unlock()
 			}
 		}
@@ -141,7 +147,11 @@ func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
 		}
 
 		if err := serv.Cache.SaveLatestData(latestData); err != nil {
-			log.Println("Failed to save latest data to cache: ", err.Error())
+			slog.Debug("Failed to save latest data to cache: " + err.Error())
+
+			if err := serv.DB.SaveLatestData(latestData); err != nil {
+				slog.Error("Failed to save latest data to Db: " + err.Error())
+			}
 		}
 
 	}

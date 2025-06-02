@@ -16,11 +16,11 @@ func NewTestModeFetcher() *TestMode {
 	return &TestMode{stop: make(chan struct{})}
 }
 
-func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error){
+func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
 	ch := make(chan map[string]domain.ExchangeData, 100)
 	ch2 := make(chan []domain.Data, 100)
 	pairs := []string{"BTCUSDT", "DOGEUSDT", "TONUSDT", "SOLUSDT", "ETHUSDT"}
-	exchanges := []string{"exchange1", "exchange2", "exchange3"}
+	exchanges := []string{"Exchange1", "Exchange2", "Exchange3"}
 	basePrices := map[string]float64{
 		"BTCUSDT": 60000.0, "DOGEUSDT": 0.15, "TONUSDT": 5.0, "SOLUSDT": 150.0, "ETHUSDT": 3000.0,
 	}
@@ -33,8 +33,8 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 			select {
 			case <-m.stop:
 				close(ch)
-                close(ch2)
-                // close(m.messageChan)
+				close(ch2)
+				// close(m.messageChan)
 				return
 			case <-ticker.C:
 				data := make(map[string]domain.ExchangeData)
@@ -52,11 +52,11 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 							Max_price:     price,
 						}
 						rawData = append(rawData, domain.Data{
-                            ExchangeName: ex,
-                            Symbol:       pair,
-                            Price:        price,
-                            Timestamp:    time.Now(),
-                        })
+							ExchangeName: ex,
+							Symbol:       pair,
+							Price:        price,
+							Timestamp:    time.Now().UnixNano() / int64(time.Millisecond),
+						})
 					}
 				}
 				ch <- data

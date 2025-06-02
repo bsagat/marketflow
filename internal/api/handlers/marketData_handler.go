@@ -20,21 +20,27 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 	metric := r.PathValue("metric")
 	if len(metric) == 0 {
 		slog.Error("Failed to get metric value from path: ", "error", domain.ErrEmptyMetricVal.Error())
-		http.Error(w, domain.ErrEmptyMetricVal.Error(), http.StatusBadRequest)
+		if err := senders.SendMsg(w, http.StatusBadRequest, domain.ErrEmptyMetricVal.Error()); err != nil {
+			slog.Error("Failed to send message to the client", "error", err.Error())
+		}
 		return
 	}
 
 	exchange := r.PathValue("exchange")
 	if len(exchange) == 0 {
 		slog.Error("Failed to get exchange value from path: ", "error", domain.ErrEmptyExchangeVal.Error())
-		http.Error(w, domain.ErrEmptyExchangeVal.Error(), http.StatusBadRequest)
+		if err := senders.SendMsg(w, http.StatusBadRequest, domain.ErrEmptyExchangeVal.Error()); err != nil {
+			slog.Error("Failed to send message to the client", "error", err.Error())
+		}
 		return
 	}
 
 	symbol := r.PathValue("symbol")
 	if len(symbol) == 0 {
-		slog.Error("Failed to get symbol value from path: ", "error", domain.ErrEmptySymbolVal.Error())
-		http.Error(w, domain.ErrEmptySymbolVal.Error(), http.StatusBadRequest)
+		slog.Error("Failed to get symbol value from path: ", "error", domain.ErrEmptyExchangeVal)
+		if err := senders.SendMsg(w, http.StatusBadRequest, domain.ErrEmptySymbolVal.Error()); err != nil {
+			slog.Error("Failed to send message to the client", "error", err.Error())
+		}
 		return
 	}
 
@@ -46,17 +52,20 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 		data, code, err := h.serv.GetLatestData(exchange, symbol)
 		if err != nil {
 			slog.Error("Failed to get latest data: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
-			http.Error(w, err.Error(), code)
+			if err := senders.SendMsg(w, code, err.Error()); err != nil {
+				slog.Error("Failed to send message to the client", "error", err.Error())
+			}
 			return
 		}
 		if err := senders.SendMetricData(w, code, data); err != nil {
 			slog.Error("Failed to send JSON message: ", "data", data, "error", err.Error())
-			http.Error(w, err.Error(), code)
 			return
 		}
 	default:
 		slog.Error("Failed to get data by metric: ", "exchange", exchange, "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal)
-		http.Error(w, fmt.Sprintf(domain.ErrInvalidMetricVal.Error(), metric), http.StatusBadRequest)
+		if err := senders.SendMsg(w, http.StatusBadRequest, domain.ErrInvalidMetricVal.Error()); err != nil {
+			slog.Error("Failed to send message to the client", "error", err.Error())
+		}
 		return
 	}
 }

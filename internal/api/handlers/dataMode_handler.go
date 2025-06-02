@@ -19,9 +19,9 @@ func NewSwitchModeHandler(serv domain.DataModeService) *SwitchModeHTTPHandler {
 
 func (h *SwitchModeHTTPHandler) SwitchMode(w http.ResponseWriter, r *http.Request) {
 	mode := r.PathValue("mode")
-	if err := h.serv.SwitchMode(mode); err != nil {
-		slog.Info("Failed to switch mode", "message", err.Error())
-		if err := senders.SendMsg(w, http.StatusBadRequest, err.Error()); err != nil {
+	if code, err := h.serv.SwitchMode(mode); err != nil {
+		slog.Error("Failed to switch mode", "message", err.Error())
+		if err := senders.SendMsg(w, code, err.Error()); err != nil {
 			slog.Error("Failed to send message to the client", "error", err.Error())
 		}
 		return

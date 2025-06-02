@@ -16,6 +16,8 @@ type CacheMemory interface {
 
 type Database interface {
 	SaveAggregatedData(aggregatedData map[string]ExchangeData) error
+	SaveLatestData(latestData map[string]Data) error
+	GetLatestData(exchange, symbol string) (Data, error)
 	CheckHealth() error
 }
 
@@ -25,7 +27,7 @@ type DataModeService interface {
 	GetLatestData(exchange string, symbol string) (Data, int, error)
 	SaveLatestData(rawDataCh chan []Data)
 	MergeAggregatedData() map[string]ExchangeData
-	SwitchMode(mode string) error
+	SwitchMode(mode string) (int, error)
 	CheckHealth() []ConnMsg
 	ListenAndSave() error
 	StopListening()

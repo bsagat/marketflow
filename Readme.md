@@ -21,6 +21,12 @@ cd marketflow
 
 ### 2. Set configuration file
 
+Create configuration file:
+```bash
+touch build/.env
+```
+
+Fill it with configuration information:
 ```bash
 # Database configs
 DB_HOST=db_host
