@@ -41,7 +41,7 @@ CACHE_PASSWORD=superPassword
 make load-images
 ```
 
-### 4. Запустите сервисы
+### 4. Start services
 ```bash
 make up
 ```
