@@ -28,9 +28,9 @@ func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetchServ *se
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /mode/{mode}", modeHandler.SwitchMode)
+	mux.HandleFunc("POST /mode/{mode}", modeHandler.SwitchMode) // Switch to MODE
 
-	mux.HandleFunc("GET /health", modeHandler.CheckHealth)
+	mux.HandleFunc("GET /health", modeHandler.CheckHealth) // Returns system status
 
 	mux.HandleFunc("GET /prices/{metric}/{symbol}", marketHandler.ProcessMetricQueryByAll)
 	mux.HandleFunc("GET /prices/{metric}/{exchange}/{symbol}", marketHandler.ProcessMetricQueryByExchange)
