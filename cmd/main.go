@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	cache "marketflow/internal/adapters/cacheMemory"
 	datafetcher "marketflow/internal/adapters/dataFetcher"
@@ -59,7 +60,7 @@ func startServer(srv *http.Server) {
 	go func() {
 		slog.Info("Starting server at " + *domain.Port + "...")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("Server error", "error", err)
+			log.Fatal("Server error: ", err.Error())
 		}
 	}()
 }

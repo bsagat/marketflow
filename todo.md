@@ -33,7 +33,36 @@ type ExchangeData struct{
 Используем slog для логирования (ВАЖНО: добавляем контекстуальную информацию для лучшей откладки)
 Документация кода (комментарий, инструкции к сущностям кода)
 
-### Optional 
+### Option: 
+Market Data API
+
+GET /prices/latest/{symbol} – Get the latest price for a given symbol.✅
+
+GET /prices/latest/{exchange}/{symbol} – Get the latest price for a given symbol from a specific exchange.  
+
+GET /prices/highest/{symbol} – Get the highest price over a period. ✅
+
+GET /prices/highest/{exchange}/{symbol} – Get the highest price over a period from a specific exchange.
+
+GET /prices/highest/{symbol}?period={duration} – Get the highest price within the last {duration} (e.g., the last 1s, 3s, 5s, 10s, 30s, 1m, 3m, 5m).
+
+GET /prices/highest/{exchange}/{symbol}?period={duration} – Get the highest price within the last {duration} from a specific exchange.
+
+GET /prices/lowest/{symbol} – Get the lowest price over a period.✅
+
+GET /prices/lowest/{exchange}/{symbol} – Get the lowest price over a period from a specific exchange.
+
+GET /prices/lowest/{symbol}?period={duration} – Get the lowest price within the last {duration}.
+
+GET /prices/lowest/{exchange}/{symbol}?period={duration} – Get the lowest price within the last {duration} from a specific exchange.
+
+GET /prices/average/{symbol} – Get the average price over a period. ✅
+
+GET /prices/average/{exchange}/{symbol} – Get the average price over a period from a specific exchange.
+
+GET /prices/average/{exchange}/{symbol}?period={duration} – Get the average price within the last {duration} from a specific exchange
+
+
 
 
 
@@ -49,9 +78,10 @@ docker load -i build/exchange_images/exchange1_amd64.tar
 docker load -i build/exchange_images/exchange2_amd64.tar
 docker load -i build/exchange_images/exchange3_amd64.tar
 
-2. docker-compose -f build/docker-compose.yml up
+2. docker-compose -f build/docker-compose.yml up / docker-compose -f build/docker-compose.yml up --build
 
-3. nc 127.0.0.1 40101 
+
+3. nc 127.0.0.1 40101
     |
     ->to test
 

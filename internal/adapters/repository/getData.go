@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"database/sql"
+	"fmt"
 	"marketflow/internal/domain"
 	"time"
 )
@@ -43,6 +45,49 @@ func (repo *PostgresDatabase) GetLatestDataByAllExchanges(symbol string) (domain
 		BY StoredTime DESC
 		LIMIT 1;
 	`, symbol)
+	if err != nil {
+		return domain.Data{}, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		if err := rows.Scan(&data.ExchangeName, &data.Symbol, &data.Price, &data.Timestamp); err != nil {
+			return domain.Data{}, err
+		}
+		return data, nil
+	}
+
+	return domain.Data{}, nil
+}
+
+func (repo *PostgresDatabase) GetExtremePrice(op, exchange, symbol string, period string) (domain.Data, error) {
+	var (
+		query string
+		rows  *sql.Rows
+		err   error
+		data  domain.Data
+	)
+
+	if exchange == "All" {
+		query = fmt.Sprintf(`
+			SELECT Exchange, Pair_name, %s(Price), MAX(StoredTime)
+			FROM LatestData
+			WHERE Pair_name = $1 AND StoredTime >= NOW() - INTERVAL '%s seconds'
+			GROUP BY Exchange, Pair_name
+			ORDER BY %s(Price) DESC
+			LIMIT 1;
+		`, op, period, op)
+		rows, err = repo.Db.Query(query, symbol)
+	} else {
+		query = fmt.Sprintf(`
+			SELECT Exchange, Pair_name, %s(Price), MAX(StoredTime)
+			FROM LatestData
+			WHERE Exchange = $1 AND Pair_name = $2 AND StoredTime >= NOW() - INTERVAL '%s seconds'
+			GROUP BY Exchange, Pair_name
+			LIMIT 1;
+		`, op, period)
+		rows, err = repo.Db.Query(query, exchange, symbol)
+	}
 
 	if err != nil {
 		return domain.Data{}, err
