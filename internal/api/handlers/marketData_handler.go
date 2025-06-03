@@ -17,6 +17,13 @@ func NewMarketDataHandler(serv domain.DataModeService) *MarketDataHTTPHandler {
 }
 
 func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWriter, r *http.Request) {
+	var (
+		data domain.Data
+		msg  string
+		code int
+		err  error
+	)
+
 	metric := r.PathValue("metric")
 	if len(metric) == 0 {
 		slog.Error("Failed to get metric value from path: ", "error", domain.ErrEmptyMetricVal.Error())
@@ -48,6 +55,36 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 	case "highest":
 	case "lowest":
 	case "average":
+		period := r.URL.Query().Get("period")
+
+		if period == "" {
+			data, code, err = h.serv.GetAveragePrice(exchange, symbol)
+			if err != nil {
+				slog.Error("Failed to get average price: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
+				if err := senders.SendMsg(w, code, err.Error()); err != nil {
+					slog.Error("Failed to send message to the client", "error", err.Error())
+				}
+				return
+			}
+
+		} else {
+			data, code, err = h.serv.GetAveragePriceWithPeriod(exchange, symbol, period)
+			if err != nil {
+				slog.Error("Failed to get average price with period: ", "exchange", exchange, "symbol", symbol, "period", period, "error", err.Error())
+				if err := senders.SendMsg(w, code, err.Error()); err != nil {
+					slog.Error("Failed to send message to the client", "error", err.Error())
+				}
+				return
+			}
+
+		}
+
+		if err := senders.SendMetricData(w, code, data); err != nil {
+			slog.Error("Failed to send JSON message: ", "data", data, "error", err.Error())
+			return
+		}
+
+		msg = fmt.Sprintf("Average price for %s at %s duration {%s}: %.2f", symbol, exchange, period, data.Price)
 	case "latest":
 		data, code, err := h.serv.GetLatestData(exchange, symbol)
 		if err != nil {
@@ -61,6 +98,7 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 			slog.Error("Failed to send JSON message: ", "data", data, "error", err.Error())
 			return
 		}
+		msg = fmt.Sprintf("Latest price for %s at %s: %.2f", symbol, exchange, data.Price)
 	default:
 		slog.Error("Failed to get data by metric: ", "exchange", exchange, "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal)
 		if err := senders.SendMsg(w, http.StatusBadRequest, domain.ErrInvalidMetricVal.Error()); err != nil {
@@ -68,9 +106,19 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 		}
 		return
 	}
+
+	slog.Info(msg)
 }
 
 func (h *MarketDataHTTPHandler) ProcessMetricQueryByAll(w http.ResponseWriter, r *http.Request) {
+	var (
+		data     domain.Data
+		exchange = "All"
+		msg      string
+		code     int
+		err      error
+	)
+
 	metric := r.PathValue("metric")
 	if len(metric) == 0 {
 		slog.Error("Failed to get metric value from path: ", "error", domain.ErrEmptyMetricVal.Error())
@@ -89,21 +137,38 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByAll(w http.ResponseWriter, r
 	case "highest":
 	case "lowest":
 	case "average":
-	case "latest":
-		data, code, err := h.serv.GetLatestData("All", symbol)
+		data, code, err = h.serv.GetAveragePrice(exchange, symbol)
 		if err != nil {
-			slog.Error("Failed to get latest data: ", "exchange", "All", "symbol", symbol, "error", err.Error())
-			http.Error(w, err.Error(), code)
+			slog.Error("Failed to get average price: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
+			if err := senders.SendMsg(w, code, err.Error()); err != nil {
+				slog.Error("Failed to send message to the client", "error", err.Error())
+			}
 			return
 		}
-		if err := senders.SendMetricData(w, code, data); err != nil {
-			slog.Error("Failed to send JSON message: ", "data", data, "error", err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		msg = fmt.Sprintf("Average price for %s at %s: %.2f", symbol, exchange, data.Price)
+	case "latest":
+		data, code, err = h.serv.GetLatestData(exchange, symbol)
+		if err != nil {
+			slog.Error("Failed to get latest data: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
+			if err := senders.SendMsg(w, code, err.Error()); err != nil {
+				slog.Error("Failed to send message to the client", "error", err.Error())
+			}
 			return
 		}
+
+		msg = fmt.Sprintf("Latest price for %s at %s: %.2f", symbol, exchange, data.Price)
 	default:
-		slog.Error("Failed to get data by metric: ", "exchange", "All", "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal.Error())
-		http.Error(w, fmt.Sprintf(domain.ErrInvalidMetricVal.Error(), metric), http.StatusBadRequest)
+		slog.Error("Failed to get data by metric: ", "exchange", exchange, "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal.Error())
+		if err := senders.SendMsg(w, code, msg); err != nil {
+			slog.Error("Failed to send JSON message: ", "data", msg, "error", err.Error())
+		}
 		return
 	}
+
+	if err := senders.SendMetricData(w, code, data); err != nil {
+		slog.Error("Failed to send JSON message: ", "data", data, "error", err.Error())
+		return
+	}
+	slog.Info(msg)
 }

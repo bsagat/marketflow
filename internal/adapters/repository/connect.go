@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"marketflow/internal/domain"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -14,6 +15,8 @@ import (
 type PostgresDatabase struct {
 	Db *sql.DB
 }
+
+var _ (domain.Database) = (*PostgresDatabase)(nil)
 
 func ConnectDB() *PostgresDatabase {
 	slog.Info("Starting database connection...")

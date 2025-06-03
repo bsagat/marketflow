@@ -14,25 +14,33 @@ func (serv *DataModeServiceImp) GetLatestData(exchange string, symbol string) (d
 		err    error
 	)
 
-	switch exchange {
-	case "Exchange1", "Exchange2", "Exchange3", "All":
-	default:
-		return latest, http.StatusBadRequest, domain.ErrInvalidExchangeVal
+	if err := CheckExchangeName(exchange); err != nil {
+		slog.Error("Failed to get latest data: ", "error", err.Error())
+		return latest, http.StatusBadRequest, err
 	}
 
-	switch symbol {
-	case domain.BTCUSDT, domain.DOGEUSDT, domain.ETHUSDT, domain.SOLUSDT, domain.TONUSDT:
-	default:
-		return latest, http.StatusBadRequest, domain.ErrInvalidSymbolVal
+	if err := CheckSymbolName(symbol); err != nil {
+		slog.Error("Failed to get latest data: ", "error", err.Error())
+		return latest, http.StatusBadRequest, err
 	}
 
+	// first we look for data in the cache
 	latest, err = serv.Cache.GetLatestData(exchange, symbol)
 	if err != nil {
+		// If Redis is not available, se look for data in the DB
 		slog.Debug("Failed to get latest data from cache: ", "error", err.Error())
-		latest, err = serv.DB.GetLatestData(exchange, symbol)
-		if err != nil {
-			slog.Error("Failed to get latest data from Db: ", "error", err.Error())
-			return latest, http.StatusInternalServerError, err
+		if exchange == "All" {
+			latest, err = serv.DB.GetAveragePriceByAllExchanges(symbol)
+			if err != nil {
+				slog.Error("Failed to get latest data by all exchanges from Db: ", "error", err.Error())
+				return latest, http.StatusInternalServerError, err
+			}
+		} else {
+			latest, err = serv.DB.GetAveragePriceByExchange(exchange, symbol)
+			if err != nil {
+				slog.Error("Failed to get latest data by exchange from Db: ", "error", err.Error())
+				return latest, http.StatusInternalServerError, err
+			}
 		}
 	}
 

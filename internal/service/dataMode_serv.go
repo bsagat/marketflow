@@ -91,7 +91,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 				return
 			case <-t.C:
 				serv.mu.Lock()
-				merged := serv.MergeAggregatedData()
+				merged := MergeAggregatedData(serv.DataBuffer)
 				serv.DB.SaveAggregatedData(merged)
 				serv.Cache.SaveAggregatedData(merged)
 				serv.DataBuffer = nil
@@ -157,12 +157,12 @@ func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
 	}
 }
 
-func (serv *DataModeServiceImp) MergeAggregatedData() map[string]domain.ExchangeData {
+func MergeAggregatedData(DataBuffer []map[string]domain.ExchangeData) map[string]domain.ExchangeData {
 	result := make(map[string]domain.ExchangeData)
 	sums := make(map[string]float64)
 	counts := make(map[string]int)
 
-	for _, dataMap := range serv.DataBuffer {
+	for _, dataMap := range DataBuffer {
 		for key, val := range dataMap {
 			agg, exists := result[key]
 			if !exists {
@@ -203,27 +203,21 @@ func (serv *DataModeServiceImp) MergeAggregatedData() map[string]domain.Exchange
 	return result
 }
 
-func (serv *DataModeServiceImp) GetAggregatedData(lastNSeconds int) map[string]domain.ExchangeData {
-	cutoff := time.Now().Add(-time.Duration(lastNSeconds) * time.Second)
-
+func (serv *DataModeServiceImp) GetAggregatedDataByDuration(exchange, symbol string, duration time.Duration) []map[string]domain.ExchangeData {
 	serv.mu.Lock()
 	defer serv.mu.Unlock()
 
-	var latest map[string]domain.ExchangeData
-	var latestTime time.Time
+	cutoff := time.Now().Add(-duration)
 
-	for _, dataMap := range serv.DataBuffer {
+	var latest []map[string]domain.ExchangeData
 
-		for _, data := range dataMap {
-			if data.Timestamp.After(cutoff) {
-				if latest == nil || data.Timestamp.After(latestTime) {
-					latest = dataMap
-					latestTime = data.Timestamp
-				}
-				break
-			}
+	for i := len(serv.DataBuffer) - 1; i >= 0; i-- {
+		m := serv.DataBuffer[i]
+		data := m[exchange+" "+symbol]
+		if data.Timestamp.After(cutoff) {
+			latest = append(latest, m)
+			continue
 		}
 	}
-
 	return latest
 }

@@ -11,8 +11,8 @@ func (repo *PostgresDatabase) SaveAggregatedData(aggregatedData map[string]domai
 	}
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO AggregatedData(Pair_name, Exchange, Average_price, Min_price, Max_price)
-		VALUES($1, $2, $3, $4, $5)
+		INSERT INTO AggregatedData(Pair_name, Exchange, StoredTime, Average_price, Min_price, Max_price)
+		VALUES($1, $2, $3, $4, $5, $6)
 		`)
 	if err != nil {
 		tx.Rollback()
@@ -21,7 +21,7 @@ func (repo *PostgresDatabase) SaveAggregatedData(aggregatedData map[string]domai
 	defer stmt.Close()
 
 	for _, data := range aggregatedData {
-		_, err := stmt.Exec(data.Pair_name, data.Exchange, data.Average_price, data.Min_price, data.Max_price)
+		_, err := stmt.Exec(data.Pair_name, data.Exchange, data.Timestamp, data.Average_price, data.Min_price, data.Max_price)
 		if err != nil {
 			tx.Rollback()
 			return err

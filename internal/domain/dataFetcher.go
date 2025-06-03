@@ -7,7 +7,7 @@ type Data struct {
 	ExchangeName string  `json:"exchange"`
 	Symbol       string  `json:"symbol"`
 	Price        float64 `json:"price"`
-	Timestamp    int64   `json:"timestamp"`
+	Timestamp    int64   `json:"timestamp,omitempty"`
 }
 
 // Aggregated data
@@ -19,3 +19,5 @@ type ExchangeData struct {
 	Min_price     float64   `json:"min_price"`
 	Max_price     float64   `json:"max_price"`
 }
+
+var Exchanges = []string{"Exchange1", "Exchange2", "Exchange3", "All"}

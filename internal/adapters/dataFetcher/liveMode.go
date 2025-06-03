@@ -172,7 +172,6 @@ func Aggregate(mergedCh chan []domain.Data) (chan map[string]domain.ExchangeData
 					exchangesData[key] = ed
 				}
 			}
-
 			aggregatedCh <- exchangesData
 		}
 		close(aggregatedCh)
