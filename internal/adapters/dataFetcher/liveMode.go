@@ -9,6 +9,7 @@ import (
 	"marketflow/internal/domain"
 	"math"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -69,9 +70,10 @@ func (m *LiveMode) Close() {
 
 func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
 	dataFlows := [3]chan domain.Data{make(chan domain.Data), make(chan domain.Data), make(chan domain.Data)}
-	ports := []string{"40101", "40102", "40103"}
 
 	wg := &sync.WaitGroup{}
+
+	ports := []string{os.Getenv("EXCHANGE1_PORT"), os.Getenv("EXCHANGE2_PORT"), os.Getenv("EXCHANGE3_PORT")}
 
 	for i := 0; i < len(ports); i++ {
 		wg.Add(1)

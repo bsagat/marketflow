@@ -54,16 +54,16 @@ services:
     image: exchange1:latest
     container_name: exchange1
     ports:
-      - "40101:40101"
+      - "${EXCHANGE1_PORT}:${EXCHANGE1_PORT}"
 
   exchange2:
     image: exchange2:latest
     container_name: exchange2
     ports:
-      - "40102:40102"
+      - "${EXCHANGE2_PORT}:${EXCHANGE2_PORT}"
 
   exchange3:
     image: exchange3:latest
     container_name: exchange3
     ports:
-      - "40103:40103"
+      - "${EXCHANGE3_PORT}:${EXCHANGE3_PORT}"

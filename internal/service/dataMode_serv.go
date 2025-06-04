@@ -37,6 +37,9 @@ func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, Ca
 var _ (domain.DataModeService) = (*DataModeServiceImp)(nil)
 
 func (serv *DataModeServiceImp) SwitchMode(mode string) (int, error) {
+	serv.mu.Lock()
+	defer serv.mu.Unlock()
+
 	// Check if is current datafetcher mode equal to changing mode
 	if _, ok := serv.Datafetcher.(*datafetcher.LiveMode); (ok && mode == "live") || (!ok && mode == "test") {
 		return http.StatusBadRequest, fmt.Errorf("data mode is already switched to %s", mode)
@@ -140,8 +143,10 @@ func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
 				latestData[allKey] = rawData[i]
 			}
 
+			maxLatest := len(domain.Exchanges) * len(domain.Symbols)
+
 			// Break loop if we find all latest prices
-			if len(latestData) == 20 {
+			if len(latestData) == maxLatest {
 				break
 			}
 		}

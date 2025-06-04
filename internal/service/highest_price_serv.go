@@ -1,52 +1,106 @@
 package service
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
 	"time"
 )
 
-func (serv *DataModeServiceImp) GetHighestPrice(exchange, symbol string, period string) (domain.Data, int, error) {
-
-}
-
-func (serv *DataModeServiceImp) GetHighestPriceWithPeriod(exchange, symbol string, period string) (domain.Data, int, error) {
+func (serv *DataModeServiceImp) GetHighestPrice(exchange, symbol string) (domain.Data, int, error) {
 	var (
 		highest domain.Data
 		err     error
 	)
 
-	switch exchange {
-	case "Exchange1", "Exchange2", "Exchange3", "All":
-	default:
-		return highest, http.StatusBadRequest, domain.ErrInvalidExchangeVal
+	if err := CheckExchangeName(exchange); err != nil {
+		return domain.Data{}, http.StatusBadRequest, err
 	}
 
-	switch symbol {
-	case domain.BTCUSDT, domain.DOGEUSDT, domain.ETHUSDT, domain.SOLUSDT, domain.TONUSDT:
+	if err := CheckSymbolName(symbol); err != nil {
+		return domain.Data{}, http.StatusBadRequest, err
+	}
+
+	switch exchange {
+	case "All":
+		highest, err = serv.DB.GetExtremePriceByAllExchanges("DESC", symbol)
+		if err != nil {
+			slog.Error("Failed to get highest price by all exchanges", "error", err.Error())
+			return domain.Data{}, http.StatusInternalServerError, err
+		}
+
 	default:
-		return highest, http.StatusBadRequest, domain.ErrInvalidSymbolVal
+		highest, err = serv.DB.GetExtremePriceByExchange("DESC", exchange, symbol)
+		if err != nil {
+			slog.Error("Failed to get highest price from exchange", "error", err.Error())
+			return domain.Data{}, http.StatusInternalServerError, err
+		}
+	}
+
+	fmt.Println(highest)
+
+	serv.mu.Lock()
+	merged := MergeAggregatedData(serv.DataBuffer)
+	serv.mu.Unlock()
+
+	for _, name := range domain.Exchanges {
+		key := name + " " + symbol
+
+		if agg, ok := merged[key]; ok {
+			if agg.Max_price != 0 {
+				highest.Price = max(highest.Price, agg.Max_price)
+			}
+		} else {
+			slog.Warn("Aggregated data not found for key", "key", key)
+		}
+		highest.Timestamp = time.Now().UnixMilli()
+	}
+
+	return highest, http.StatusOK, nil
+}
+
+func (serv *DataModeServiceImp) GetHighestPriceWithPeriod(exchange, symbol string, period string) (domain.Data, int, error) {
+	if err := CheckExchangeName(exchange); err != nil {
+		return domain.Data{}, http.StatusBadRequest, err
+	}
+
+	if err := CheckSymbolName(symbol); err != nil {
+		return domain.Data{}, http.StatusBadRequest, err
+	}
+
+	if exchange == "All" {
+		return domain.Data{}, http.StatusBadRequest, errors.New(`"All" is not supported for period-based queries`)
 	}
 
 	duration, err := time.ParseDuration(period)
 	if err != nil {
-		return highest, http.StatusBadRequest, err
+		return domain.Data{}, http.StatusBadRequest, err
 	}
 
 	startTime := time.Now()
 
-	result, err := serv.DB.GetExtremePrice("MAX", exchange, symbol, period)
+	highest, err := serv.DB.GetExtremePriceByDuration("DESC", exchange, symbol, startTime, duration)
 	if err != nil {
-		slog.Error("Failed to get highest price from DB", "error", err.Error())
+		slog.Error("Failed to get highest price from Exchange by period", "error", err.Error())
 		return domain.Data{}, http.StatusInternalServerError, err
 	}
+
+	fmt.Println(highest)
 
 	aggregated := serv.GetAggregatedDataByDuration(exchange, symbol, duration)
 	merged := MergeAggregatedData(aggregated)
 
-	result.Price += merged[result.ExchangeName+" "+symbol].Max_price
-	result.Timestamp = startTime.Add(-duration).UnixMilli()
+	key := highest.ExchangeName + " " + symbol
+	if agg, ok := merged[key]; ok {
+		if agg.Max_price != 0 {
+			highest.Price = max(highest.Price, agg.Max_price)
+		}
+	} else {
+		slog.Warn("Aggregated data not found for key", "key", key)
+	}
+	highest.Timestamp = startTime.Add(-duration).UnixMilli()
 
-	return result, http.StatusOK, nil
+	return highest, http.StatusOK, nil
 }

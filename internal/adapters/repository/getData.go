@@ -34,15 +34,41 @@ func (repo *PostgresDatabase) GetLatestDataByExchange(exchange, symbol string) (
 	return domain.Data{}, nil
 }
 
-// Gets the latest price data for a specific symbol
+func (repo *PostgresDatabase) GetExtremePriceByExchange(order, exchange, symbol string) (domain.Data, error) {
+	var data domain.Data
+
+	query := fmt.Sprintf(`
+		SELECT Exchange, Pair_name, Price, StoredTime
+		FROM LatestData
+		WHERE Exchange = $1 AND Pair_name = $2
+		ORDER BY Price %s
+		LIMIT 1;
+	`, order)
+
+	rows, err := repo.Db.Query(query, exchange, symbol)
+	if err != nil {
+		return domain.Data{}, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		if err := rows.Scan(&data.ExchangeName, &data.Symbol, &data.Price, &data.Timestamp); err != nil {
+			return domain.Data{}, err
+		}
+		return data, nil
+	}
+
+	return domain.Data{}, nil
+}
+
 func (repo *PostgresDatabase) GetLatestDataByAllExchanges(symbol string) (domain.Data, error) {
 	var data domain.Data
 
 	rows, err := repo.Db.Query(`
 		SELECT Exchange, Pair_name, Price, StoredTime
-		LatestData
-		Pair_name = $1
-		BY StoredTime DESC
+		FROM LatestData
+		WHERE Pair_name = $1
+		ORDER BY StoredTime DESC
 		LIMIT 1;
 	`, symbol)
 	if err != nil {
@@ -60,33 +86,65 @@ func (repo *PostgresDatabase) GetLatestDataByAllExchanges(symbol string) (domain
 	return domain.Data{}, nil
 }
 
-func (repo *PostgresDatabase) GetExtremePrice(op, exchange, symbol string, period string) (domain.Data, error) {
+func (repo *PostgresDatabase) GetExtremePriceByAllExchanges(order, symbol string) (domain.Data, error) {
+	var data domain.Data
+
+	// DESC для max, ASC для min
+
+	query := fmt.Sprintf(`
+		SELECT Exchange, Pair_name, Price, StoredTime
+		FROM LatestData
+		WHERE Pair_name = $1
+		ORDER BY Price %s
+		LIMIT 1;
+	`, order)
+
+	rows, err := repo.Db.Query(query, symbol)
+	if err != nil {
+		return domain.Data{}, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		if err := rows.Scan(&data.ExchangeName, &data.Symbol, &data.Price, &data.Timestamp); err != nil {
+			return domain.Data{}, err
+		}
+		return data, nil
+	}
+
+	return domain.Data{}, nil
+}
+
+func (repo *PostgresDatabase) GetExtremePriceByDuration(order, exchange, symbol string, startTime time.Time, period time.Duration) (domain.Data, error) {
+	var data domain.Data
+	endTime := startTime.Add(-period)
+
 	var (
-		query string
 		rows  *sql.Rows
 		err   error
-		data  domain.Data
+		query string
 	)
 
 	if exchange == "All" {
 		query = fmt.Sprintf(`
-			SELECT Exchange, Pair_name, %s(Price), MAX(StoredTime)
+			SELECT Exchange, Pair_name, Price, StoredTime
 			FROM LatestData
-			WHERE Pair_name = $1 AND StoredTime >= NOW() - INTERVAL '%s seconds'
-			GROUP BY Exchange, Pair_name
-			ORDER BY %s(Price) DESC
+			WHERE Pair_name = $1 AND StoredTime BETWEEN $2 AND $3
+			ORDER BY Price %s
 			LIMIT 1;
-		`, op, period, op)
-		rows, err = repo.Db.Query(query, symbol)
+		`, order)
+
+		rows, err = repo.Db.Query(query, symbol, endTime, startTime)
 	} else {
 		query = fmt.Sprintf(`
-			SELECT Exchange, Pair_name, %s(Price), MAX(StoredTime)
+			SELECT Exchange, Pair_name, Price, StoredTime
 			FROM LatestData
-			WHERE Exchange = $1 AND Pair_name = $2 AND StoredTime >= NOW() - INTERVAL '%s seconds'
-			GROUP BY Exchange, Pair_name
+			WHERE Exchange = $1 AND Pair_name = $2 AND StoredTime BETWEEN $3 AND $4
+			ORDER BY Price %s
 			LIMIT 1;
-		`, op, period)
-		rows, err = repo.Db.Query(query, exchange, symbol)
+		`, order)
+
+		rows, err = repo.Db.Query(query, exchange, symbol, endTime, startTime)
 	}
 
 	if err != nil {

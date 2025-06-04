@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
 	"time"
@@ -36,11 +37,18 @@ func (serv *DataModeServiceImp) GetAveragePrice(exchange, symbol string) (domain
 
 	// we also search it in the DataBuffer
 	serv.mu.Lock()
-	merged := MergeAggregatedData(serv.DataBuffer)[exchange+" "+symbol]
+	merged := MergeAggregatedData(serv.DataBuffer)
 	serv.mu.Unlock()
 
-	data.Timestamp = merged.Timestamp.UnixMilli()
-	data.Price = (merged.Average_price + data.Price) / 2
+	data.Timestamp = time.Now().UnixMilli()
+	key := exchange + " " + symbol
+	if avg, ok := merged[key]; ok {
+		if avg.Average_price != 0 {
+			data.Price = (avg.Average_price + data.Price) / 2
+		}
+	} else {
+		slog.Warn("Aggregated data not found for key", "key", key)
+	}
 
 	return data, http.StatusOK, nil
 }
@@ -60,7 +68,7 @@ func (serv *DataModeServiceImp) GetAveragePriceWithPeriod(exchange, symbol, peri
 	}
 
 	if exchange == "All" {
-		return data, http.StatusBadRequest, errors.New("invalid exchange name")
+		return data, http.StatusBadRequest, errors.New(`"All" is not supported for period-based queries`)
 	}
 
 	duration, err := time.ParseDuration(period)
@@ -74,34 +82,19 @@ func (serv *DataModeServiceImp) GetAveragePriceWithPeriod(exchange, symbol, peri
 		return data, http.StatusInternalServerError, err
 	}
 
+	data.Timestamp = startTime.Add(-duration).UnixMilli()
+
 	aggregated := serv.GetAggregatedDataByDuration(exchange, symbol, duration)
 	merged := MergeAggregatedData(aggregated)
 
-	data.Price += merged[data.ExchangeName+" "+symbol].Average_price
-	data.Timestamp = startTime.Add(-duration).UnixMilli()
+	key := data.ExchangeName + " " + symbol
+	if agg, ok := merged[key]; ok {
+		if agg.Average_price != 0 {
+			data.Price = (agg.Average_price + data.Price) / 2
+		}
+	} else {
+		slog.Warn("Aggregated data not found for key", "key", key)
+	}
 
 	return data, http.StatusOK, nil
 }
-
-/*
-
-GET /prices/average/{exchange}/{symbol}?period={duration}
-
-
-if time < 60 seconds:
-	search in redis
-	if not
-		search in dataBuffer
-		then save it in redis
-
-elif time >= 1 min:
-
-first search in redis
-then give it to client
-
-OR
-search in postgres
-then save it in redis
-then give it to client
-
-*/

@@ -34,7 +34,6 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 			case <-m.stop:
 				close(ch)
 				close(ch2)
-				// close(m.messageChan)
 				return
 			case <-ticker.C:
 				data := make(map[string]domain.ExchangeData)
@@ -71,7 +70,7 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 }
 
 func (m *TestMode) CheckHealth() error {
-	return nil // is it nado voobshe?
+	return nil
 }
 
 func (m *TestMode) Close() {
