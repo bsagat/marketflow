@@ -53,7 +53,7 @@ func (serv *DataModeServiceImp) GetLowestPrice(exchange, symbol string) (domain.
 	}
 	lowest.Timestamp = time.Now().UnixMilli()
 
-	return lowest, 0, nil
+	return lowest, http.StatusOK, nil
 }
 
 func (serv *DataModeServiceImp) GetLowestPriceWithPeriod(exchange, symbol string, period string) (domain.Data, int, error) {
