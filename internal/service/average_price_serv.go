@@ -63,8 +63,6 @@ func (serv *DataModeServiceImp) GetAveragePriceWithPeriod(exchange, symbol, peri
 		return data, http.StatusBadRequest, errors.New("invalid exchange name")
 	}
 
-	// Period parse logic
-
 	duration, err := time.ParseDuration(period)
 	if err != nil {
 		return data, http.StatusBadRequest, err

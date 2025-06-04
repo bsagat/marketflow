@@ -55,11 +55,32 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 	case "highest":
 		period := r.URL.Query().Get("period")
 
-		data, code, err = h.serv.GetHighestPrice(exchange, symbol, period)
+		if period == "" {
+			data, code, err = h.serv.GetHighestPrice(exchange, symbol, period)
+			if err != nil {
+				slog.Error("Failed to get highest price: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
+				if err := senders.SendMsg(w, code, err.Error()); err != nil {
+					slog.Error("Failed to send message to the client", "error", err.Error())
+				}
+				return
+			}
+
+		}
 	case "lowest":
 		period := r.URL.Query().Get("period")
 
-		data, code, err = h.serv.GetLowestPrice(exchange, symbol, period)
+		if period == "" {
+			data, code, err = h.serv.GetLowestPrice(exchange, symbol, period)
+			if err != nil {
+				slog.Error("Failed to get lowest price: ", "exchange", exchange, "symbol", symbol, "error", err.Error())
+				if err := senders.SendMsg(w, code, err.Error()); err != nil {
+					slog.Error("Failed to send message to the client", "error", err.Error())
+				}
+				return
+			}
+
+		}
+
 	case "average":
 		period := r.URL.Query().Get("period")
 		if period == "" {
