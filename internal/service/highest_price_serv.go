@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
@@ -25,21 +24,19 @@ func (serv *DataModeServiceImp) GetHighestPrice(exchange, symbol string) (domain
 
 	switch exchange {
 	case "All":
-		highest, err = serv.DB.GetExtremePriceByAllExchanges("DESC", symbol)
+		highest, err = serv.DB.GetExtremePriceByAllExchanges("Max_price", symbol)
 		if err != nil {
 			slog.Error("Failed to get highest price by all exchanges", "error", err.Error())
 			return domain.Data{}, http.StatusInternalServerError, err
 		}
 
 	default:
-		highest, err = serv.DB.GetExtremePriceByExchange("DESC", exchange, symbol)
+		highest, err = serv.DB.GetExtremePriceByExchange("Max_price", exchange, symbol)
 		if err != nil {
 			slog.Error("Failed to get highest price from exchange", "error", err.Error())
 			return domain.Data{}, http.StatusInternalServerError, err
 		}
 	}
-
-	fmt.Println(highest)
 
 	serv.mu.Lock()
 	merged := MergeAggregatedData(serv.DataBuffer)
@@ -81,13 +78,11 @@ func (serv *DataModeServiceImp) GetHighestPriceWithPeriod(exchange, symbol strin
 
 	startTime := time.Now()
 
-	highest, err := serv.DB.GetExtremePriceByDuration("DESC", exchange, symbol, startTime, duration)
+	highest, err := serv.DB.GetExtremePriceByDuration("Max_price", exchange, symbol, startTime, duration)
 	if err != nil {
 		slog.Error("Failed to get highest price from Exchange by period", "error", err.Error())
 		return domain.Data{}, http.StatusInternalServerError, err
 	}
-
-	fmt.Println(highest)
 
 	aggregated := serv.GetAggregatedDataByDuration(exchange, symbol, duration)
 	merged := MergeAggregatedData(aggregated)

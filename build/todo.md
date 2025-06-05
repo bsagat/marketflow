@@ -64,27 +64,7 @@ GET /prices/average/{exchange}/{symbol} – Get the average price over a period 
 
 GET /prices/average/{exchange}/{symbol}?period={duration} – Get the average price within the last {duration} from a specific exchange
 
-TEST:
-http://localhost:8080/prices/latest/BTCUSDT✅
-http://localhost:8080/prices/latest/Exchange1/BTCUSDT✅
 
-сделать чтобы Exchange правильынй показывал? Надо?
-http://localhost:8080/prices/highest/BTCUSDT✅
-
-данные есть хз праввильно?:
-http://localhost:8080/prices/highest/Exchange1/BTCUSDT✅
-
-http://localhost:8080/prices/highest/BTCUSDT?period=1s 
-http://localhost:8080/prices/highest/Exchange1/BTCUSDT?period=1s
-
-
-http://localhost:8080/prices/lowest/BTCUSDT
-http://localhost:8080/prices/lowest/Exchange1/BTCUSDT
-http://localhost:8080/prices/lowest/BTCUSDT?period=1s
-http://localhost:8080/prices/lowest/Exchange1/BTCUSDT?period=1s
-http://localhost:8080/prices/average/BTCUSDT
-http://localhost:8080/prices/average/Exchange1/BTCUSDT
-http://localhost:8080/prices/average/Exchange1/BTCUSDT?period=1s
 
 
 
