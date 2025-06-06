@@ -2,6 +2,7 @@ package senders
 
 import (
 	"encoding/json"
+	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
 	"time"
@@ -19,6 +20,7 @@ func SendMsg(w http.ResponseWriter, code int, msg string) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
+		slog.Error("Failed to send message to the client", "error", err.Error())
 		return err
 	}
 	return nil

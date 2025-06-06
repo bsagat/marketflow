@@ -26,6 +26,8 @@ func main() {
 	waitForShutdown()
 
 	shutdownServer(srv)
+
+	slog.Info("App is closed...")
 }
 
 func setupApp() (*http.Server, func()) {

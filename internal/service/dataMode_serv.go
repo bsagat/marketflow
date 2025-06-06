@@ -36,6 +36,7 @@ func NewDataFetcher(dataSource domain.DataFetcher, DataSaver domain.Database, Ca
 
 var _ (domain.DataModeService) = (*DataModeServiceImp)(nil)
 
+// Mode switch core logic
 func (serv *DataModeServiceImp) SwitchMode(mode string) (int, error) {
 	serv.mu.Lock()
 	defer serv.mu.Unlock()
@@ -64,6 +65,7 @@ func (serv *DataModeServiceImp) SwitchMode(mode string) (int, error) {
 	return http.StatusOK, nil
 }
 
+// Goroutines stop logic
 func (serv *DataModeServiceImp) StopListening() {
 	serv.cancel()
 	serv.Datafetcher.Close()
@@ -71,6 +73,7 @@ func (serv *DataModeServiceImp) StopListening() {
 	slog.Info("Listen and save goroutine has been finished...")
 }
 
+// Core logic: handle data retrieval, aggregation, and persistence for exchanges
 func (serv *DataModeServiceImp) ListenAndSave() error {
 	aggregated, rawDataCh, err := serv.Datafetcher.SetupDataFetcher()
 	if err != nil {
@@ -124,6 +127,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 	return nil
 }
 
+// Retrieves the latest data from the channel and stores it in both PostgreSQL and Redis
 func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
 	for rawData := range rawDataCh {
 		latestData := make(map[string]domain.Data)
@@ -162,6 +166,7 @@ func (serv *DataModeServiceImp) SaveLatestData(rawDataCh chan []domain.Data) {
 	}
 }
 
+// Merges multiple aggregated exchange data entries into a single aggregated result
 func MergeAggregatedData(DataBuffer []map[string]domain.ExchangeData) map[string]domain.ExchangeData {
 	result := make(map[string]domain.ExchangeData)
 	sums := make(map[string]float64)
@@ -198,7 +203,7 @@ func MergeAggregatedData(DataBuffer []map[string]domain.ExchangeData) map[string
 		}
 	}
 
-	// Считаем среднее
+	// Count average
 	for key, item := range result {
 		if count := counts[key]; count > 0 {
 			item.Average_price = sums[key] / float64(count)
@@ -208,6 +213,7 @@ func MergeAggregatedData(DataBuffer []map[string]domain.ExchangeData) map[string
 	return result
 }
 
+// Fetches aggregated market data for a specific exchange and symbol within a time period
 func (serv *DataModeServiceImp) GetAggregatedDataByDuration(exchange, symbol string, duration time.Duration) []map[string]domain.ExchangeData {
 	serv.mu.Lock()
 	defer serv.mu.Unlock()
@@ -218,7 +224,12 @@ func (serv *DataModeServiceImp) GetAggregatedDataByDuration(exchange, symbol str
 
 	for i := len(serv.DataBuffer) - 1; i >= 0; i-- {
 		m := serv.DataBuffer[i]
-		data := m[exchange+" "+symbol]
+		data, ok := m[exchange+" "+symbol]
+		if !ok {
+			slog.Warn("GetAggregatedDataByDuration: value is not found by key")
+			continue
+		}
+
 		if data.Timestamp.After(cutoff) {
 			latest = append(latest, m)
 			continue
