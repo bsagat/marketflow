@@ -98,7 +98,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/lowest/Exchange1/SOLUSDT",
+					"raw": "localhost:8080/prices/latest/Exchange1/SOLUSDT",
 					"host": [
 						"localhost"
 					],

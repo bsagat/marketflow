@@ -47,7 +47,6 @@ func SendMetricData(w http.ResponseWriter, code int, rawdata domain.Data) error 
 		Symbol:       rawdata.Symbol,
 		Price:        rawdata.Price,
 		Timestamp: time.Unix(0, rawdata.Timestamp*int64(time.Millisecond)).
-			Local().
 			Format("2006-01-02 15:04:05"),
 	}
 
