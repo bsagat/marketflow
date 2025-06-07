@@ -38,7 +38,9 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 				var rawData []domain.Data
 				now := time.Now()
 
-				for _, ex := range exchanges {
+				for i := 0; i < len(exchanges); i++ {
+					rand.Seed(time.Now().UnixNano())
+					ex := exchanges[rand.Intn(len(exchanges))]
 					for _, pair := range pairs {
 						// Generate random price fluctuation (±15%)
 						price := basePrices[pair] * (1 + (rand.Float64()-0.5)*0.3)

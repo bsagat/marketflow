@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"marketflow/internal/domain"
 	"time"
 )
@@ -17,13 +18,16 @@ func (c *RedisCacheMemory) GetLatestData(exchange, symbol string) (domain.Data, 
 	defer cancel()
 	key := "latest " + exchange + " " + symbol
 	res, err := c.Cache.Get(ctx, key).Result()
+	
+	fmt.Println("DEBUG: ", res)
+
 	if err != nil {
 		return domain.Data{}, err
 	}
-
 	raw := domain.Data{}
 	if err := json.Unmarshal([]byte(res), &raw); err != nil {
 		return domain.Data{}, err
 	}
+
 	return raw, nil
 }
