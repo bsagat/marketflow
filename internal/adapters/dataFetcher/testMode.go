@@ -38,6 +38,7 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 			case <-ticker.C:
 				data := make(map[string]domain.ExchangeData)
 				rawData := make([]domain.Data, 0, len(pairs)*len(exchanges))
+				now := time.Now()
 				for _, ex := range exchanges {
 					for _, pair := range pairs {
 						// Generate random price fluctuation (±15%)
@@ -45,7 +46,7 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 						data[ex+"-"+pair] = domain.ExchangeData{
 							Pair_name:     pair,
 							Exchange:      ex,
-							Timestamp:     time.Now(),
+							Timestamp:     now,
 							Average_price: price, // Use Average_price as per your struct
 							Min_price:     price, // Set Min/Max same for real-time update
 							Max_price:     price,
@@ -54,8 +55,35 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 							ExchangeName: ex,
 							Symbol:       pair,
 							Price:        price,
-							Timestamp:    time.Now().UnixNano() / int64(time.Millisecond),
+							Timestamp:    now.UnixNano() / int64(time.Millisecond),
 						})
+					}
+				}
+				for _, pair := range pairs {
+					var sum, min, max float64
+					count := 0
+					for _, ex := range exchanges {
+						if d, ok := data[ex+" "+pair]; ok {
+							sum += d.Average_price
+							if min == 0 || d.Min_price < min {
+								min = d.Min_price
+							}
+							if d.Max_price > max {
+								max = d.Max_price
+							}
+							count++
+						}
+					}
+					if count > 0 {
+						key := "All " + pair
+						data[key] = domain.ExchangeData{
+							Pair_name:     pair,
+							Exchange:      "All",
+							Timestamp:     now,
+							Average_price: sum / float64(count),
+							Min_price:     min,
+							Max_price:     max,
+						}
 					}
 				}
 				ch <- data

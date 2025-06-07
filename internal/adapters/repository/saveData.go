@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+	"log/slog"
 	"marketflow/internal/domain"
 )
 
@@ -16,18 +18,20 @@ func (repo *PostgresDatabase) SaveAggregatedData(aggregatedData map[string]domai
 		`)
 	if err != nil {
 		tx.Rollback()
+		slog.Error("Failed to prepare statement", "error", err.Error())
 		return err
 	}
 	defer stmt.Close()
-
+	fmt.Println(len(aggregatedData))
 	for _, data := range aggregatedData {
 		_, err := stmt.Exec(data.Pair_name, data.Exchange, data.Timestamp, data.Average_price, data.Min_price, data.Max_price)
 		if err != nil {
 			tx.Rollback()
+			slog.Error("Failed to execute statement", "pair", data.Pair_name, "exchange", data.Exchange, "error", err.Error())
 			return err
 		}
 	}
-
+	slog.Info("Committing transaction", "records", len(aggregatedData))
 	return tx.Commit()
 }
 
