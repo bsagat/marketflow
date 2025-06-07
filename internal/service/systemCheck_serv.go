@@ -1,9 +1,8 @@
 package service
 
 import (
-	"marketflow/internal/domain"
-
 	"log/slog"
+	"marketflow/internal/domain"
 )
 
 // Services health checking logic

@@ -122,7 +122,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 					return
 				}
 				serv.mu.Lock()
-				//To not overload buffer
+				// To not overload buffer
 				// if len(serv.DataBuffer) > 15000 {
 				// 	serv.DataBuffer = serv.DataBuffer[len(serv.DataBuffer)-7500:]
 				// }

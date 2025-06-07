@@ -14,5 +14,4 @@ func (h *SwitchModeHTTPHandler) CheckHealth(w http.ResponseWriter, r *http.Reque
 		slog.Error("Failed to send checkhealth data: " + err.Error())
 		senders.SendMsg(w, http.StatusInternalServerError, err.Error())
 	}
-
 }

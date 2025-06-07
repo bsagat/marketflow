@@ -10,6 +10,7 @@ services:
       - "${CACHE_PORT}:6379"
     command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
     environment:
+      TZ: Asia/Almaty
       REDIS_HOST: ${CACHE_HOST}
       REDIS_PORT: ${CACHE_PORT}
       REDIS_PASSWORD: ${CACHE_PASSWORD}
@@ -43,6 +44,8 @@ services:
   app:
     build:
       context: .
+    environment:
+      - TZ=Asia/Almaty
     ports:
       - "8080:8080"
     depends_on:

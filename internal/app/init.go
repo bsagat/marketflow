@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 func init() {
@@ -34,7 +35,7 @@ func Setup(db domain.Database, cacheMemory domain.CacheMemory, datafetchServ *se
 
 	mux.HandleFunc("GET /prices/{metric}/{symbol}", marketHandler.ProcessMetricQueryByAll)
 	mux.HandleFunc("GET /prices/{metric}/{exchange}/{symbol}", marketHandler.ProcessMetricQueryByExchange)
-
+	fmt.Println(time.Now())
 	return mux
 }
 

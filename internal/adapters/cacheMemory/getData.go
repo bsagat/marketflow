@@ -18,7 +18,7 @@ func (c *RedisCacheMemory) GetLatestData(exchange, symbol string) (domain.Data, 
 	defer cancel()
 	key := "latest " + exchange + " " + symbol
 	res, err := c.Cache.Get(ctx, key).Result()
-	
+
 	fmt.Println("DEBUG: ", res)
 
 	if err != nil {

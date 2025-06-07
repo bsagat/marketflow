@@ -60,8 +60,8 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 
 	aggregatedCh, rawCh := Aggregate(rawFlow)
 	return aggregatedCh, rawCh, nil
-
 }
+
 func AggregateFromTestMode(input chan []domain.Data) (chan map[string]domain.ExchangeData, chan []domain.Data) {
 	aggregated := make(chan map[string]domain.ExchangeData, 100)
 	raw := make(chan []domain.Data, 100)

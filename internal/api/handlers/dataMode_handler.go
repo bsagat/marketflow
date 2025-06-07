@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"marketflow/internal/api/senders"
 	"marketflow/internal/domain"
-
 	"net/http"
 )
 

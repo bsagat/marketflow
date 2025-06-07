@@ -99,7 +99,7 @@ func (repo *PostgresDatabase) GetAveragePriceByAllExchanges(symbol string) (doma
 	rows, err := repo.Db.Query(`
 	SELECT COALESCE(AVG(Average_price), 0) from AggregatedData
 	WHERE Pair_name = $1 AND Exchange = 'All'
-	`, symbol)	
+	`, symbol)
 	if err != nil {
 		return domain.Data{}, err
 	}
@@ -319,6 +319,7 @@ WHERE
 		}
 	}
 	data.Timestamp = t.UnixMilli()
+	fmt.Println(data, t)
 
 	return data, nil
 }

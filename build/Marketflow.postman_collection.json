@@ -1,13 +1,23 @@
 {
 	"info": {
-		"_postman_id": "c7ec0ee6-3310-4c66-ba0d-72769e0fdf9e",
+		"_postman_id": "ce8dcb43-c897-4521-b271-6653382d0d4a",
 		"name": "Marketflow",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "39030219"
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
 		{
 			"name": "Check Health",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -88,16 +98,16 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/latest/Exchange1/BTCUSDT",
+					"raw": "localhost:8080/prices/lowest/Exchange1/SOLUSDT",
 					"host": [
 						"localhost"
 					],
 					"port": "8080",
 					"path": [
 						"prices",
-						"latest",
+						"lowest",
 						"Exchange1",
-						"BTCUSDT"
+						"SOLUSDT"
 					]
 				}
 			},
@@ -129,7 +139,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/average/Exchange1/BTCUSDT",
+					"raw": "localhost:8080/prices/average/Exchange2/BTCUSDT",
 					"host": [
 						"localhost"
 					],
@@ -137,7 +147,7 @@
 					"path": [
 						"prices",
 						"average",
-						"Exchange1",
+						"Exchange2",
 						"BTCUSDT"
 					]
 				}
@@ -150,7 +160,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/average/Exchange1/BTCUSDT?period=1m",
+					"raw": "localhost:8080/prices/average/Exchange1/BTCUSDT?period=60m",
 					"host": [
 						"localhost"
 					],
@@ -164,7 +174,7 @@
 					"query": [
 						{
 							"key": "period",
-							"value": "1m"
+							"value": "60m"
 						}
 					]
 				}
@@ -192,12 +202,12 @@
 			"response": []
 		},
 		{
-			"name": "Highest price From Exchange",
+			"name": "Highest price by all With Period",
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/highest/Exchange1/BTCUSDT",
+					"raw": "localhost:8080/prices/highest/BTCUSDT?period=1s",
 					"host": [
 						"localhost"
 					],
@@ -205,7 +215,33 @@
 					"path": [
 						"prices",
 						"highest",
-						"Exchange1",
+						"BTCUSDT"
+					],
+					"query": [
+						{
+							"key": "period",
+							"value": "1s"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Highest price From Exchange",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/prices/highest/Exchange3/BTCUSDT",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"prices",
+						"highest",
+						"Exchange3",
 						"BTCUSDT"
 					]
 				}
@@ -218,7 +254,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "localhost:8080/prices/average/Exchange2/BTCUSDT?period=50000000m",
+					"raw": "localhost:8080/prices/average/Exchange2/BTCUSDT?period=1s",
 					"host": [
 						"localhost"
 					],
@@ -232,7 +268,7 @@
 					"query": [
 						{
 							"key": "period",
-							"value": "50000000m"
+							"value": "1s"
 						}
 					]
 				}
@@ -260,27 +296,7 @@
 			"response": []
 		},
 		{
-			"name": "Lowest price From Exchange",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "localhost:8080/prices/lowest/BTCUSDT",
-					"host": [
-						"localhost"
-					],
-					"port": "8080",
-					"path": [
-						"prices",
-						"lowest",
-						"BTCUSDT"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "Lowest price From Exchange By period",
+			"name": "Lowest price by all with period",
 			"request": {
 				"method": "GET",
 				"header": [],
@@ -299,6 +315,54 @@
 						{
 							"key": "period",
 							"value": "1s"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Lowest price From Exchange",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/prices/lowest/Exchange3/BTCUSDT",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"prices",
+						"lowest",
+						"Exchange3",
+						"BTCUSDT"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Lowest price From Exchange By period",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:8080/prices/lowest/Exchange3/BTCUSDT?period=100m",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"prices",
+						"lowest",
+						"Exchange3",
+						"BTCUSDT"
+					],
+					"query": [
+						{
+							"key": "period",
+							"value": "100m"
 						}
 					]
 				}

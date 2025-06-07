@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
@@ -53,6 +54,8 @@ func (serv *DataModeServiceImp) GetLowestPrice(exchange, symbol string) (domain.
 	if lowest.Price == 0 {
 		return domain.Data{}, http.StatusNotFound, domain.ErrLowestPriceNotFound
 	}
+
+	fmt.Println(lowest)
 
 	return lowest, http.StatusOK, nil
 }
