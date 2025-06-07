@@ -123,7 +123,7 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByExchange(w http.ResponseWrit
 
 	default:
 		slog.Error("Failed to get data by metric: ", "exchange", "All", "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal.Error())
-		senders.SendMsg(w, code, domain.ErrInvalidMetricVal.Error())
+		senders.SendMsg(w, http.StatusBadRequest, domain.ErrInvalidMetricVal.Error())
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *MarketDataHTTPHandler) ProcessMetricQueryByAll(w http.ResponseWriter, r
 		msg = fmt.Sprintf("Latest price for %s at %s: %.2f", symbol, exchange, data.Price)
 	default:
 		slog.Error("Failed to get data by metric: ", "exchange", exchange, "symbol", symbol, "metric", metric, "error", domain.ErrInvalidMetricVal.Error())
-		senders.SendMsg(w, code, domain.ErrInvalidMetricVal.Error())
+		senders.SendMsg(w, http.StatusBadRequest, domain.ErrInvalidMetricVal.Error())
 		return
 	}
 

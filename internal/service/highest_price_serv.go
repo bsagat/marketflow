@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"log/slog"
 	"marketflow/internal/domain"
 	"net/http"
@@ -41,7 +40,6 @@ func (serv *DataModeServiceImp) GetHighestPrice(exchange, symbol string) (domain
 
 	serv.mu.Lock()
 	merged := MergeAggregatedData(serv.DataBuffer)
-	fmt.Println(serv.DataBuffer)
 	serv.mu.Unlock()
 
 	key := exchange + " " + symbol

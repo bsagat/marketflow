@@ -29,13 +29,13 @@ func (serv *DataModeServiceImp) GetLatestData(exchange string, symbol string) (d
 		// If Redis is not available, se look for data in the DB
 		slog.Debug("Failed to get latest data from cache: ", "error", err.Error())
 		if exchange == "All" {
-			latest, err = serv.DB.GetAveragePriceByAllExchanges(symbol)
+			latest, err = serv.DB.GetLatestDataByAllExchanges(symbol)
 			if err != nil {
 				slog.Error("Failed to get latest data by all exchanges from Db: ", "error", err.Error())
 				return latest, http.StatusInternalServerError, err
 			}
 		} else {
-			latest, err = serv.DB.GetAveragePriceByExchange(exchange, symbol)
+			latest, err = serv.DB.GetLatestDataByExchange(exchange, symbol)
 			if err != nil {
 				slog.Error("Failed to get latest data by exchange from Db: ", "error", err.Error())
 				return latest, http.StatusInternalServerError, err

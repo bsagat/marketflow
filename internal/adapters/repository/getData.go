@@ -19,7 +19,6 @@ func (repo *PostgresDatabase) GetLatestDataByExchange(exchange, symbol string) (
 		ORDER BY StoredTime DESC
 		LIMIT 1;
 		`, exchange, symbol)
-
 	if err != nil {
 		return domain.Data{}, err
 	}
@@ -35,6 +34,7 @@ func (repo *PostgresDatabase) GetLatestDataByExchange(exchange, symbol string) (
 
 	return domain.Data{}, nil
 }
+
 func (repo *PostgresDatabase) GetLatestDataByAllExchanges(symbol string) (domain.Data, error) {
 	data := domain.Data{
 		ExchangeName: "All",
@@ -431,5 +431,6 @@ WHERE
 	}
 
 	data.Timestamp = t.UnixMilli()
+
 	return data, nil
 }
