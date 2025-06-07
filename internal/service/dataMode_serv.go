@@ -111,7 +111,12 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 		for {
 			select {
 			case <-serv.ctx.Done():
-				return
+				for data := range aggregated {
+					serv.mu.Lock()
+					serv.DataBuffer = append(serv.DataBuffer, data)
+					slog.Debug("Received data", "buffer_size", len(serv.DataBuffer)) // Tick log
+					serv.mu.Unlock()
+				}
 			case data, ok := <-aggregated:
 				if !ok {
 					return

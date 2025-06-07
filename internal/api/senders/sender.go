@@ -26,7 +26,7 @@ func SendMsg(w http.ResponseWriter, code int, msg string) error {
 	return nil
 }
 
-func SendJSON(w http.ResponseWriter, code int, data any) error {
+func SendJSON(w http.ResponseWriter, code int, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
