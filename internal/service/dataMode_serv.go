@@ -7,7 +7,6 @@ import (
 	datafetcher "marketflow/internal/adapters/dataFetcher"
 	"marketflow/internal/domain"
 	"net/http"
-	"reflect"
 	"sync"
 	"time"
 )
@@ -118,10 +117,7 @@ func (serv *DataModeServiceImp) ListenAndSave() error {
 					return
 				}
 				serv.mu.Lock()
-				fmt.Printf("ListenAndSave: Received aggregated data, keys=%v\n", reflect.ValueOf(data).MapKeys())
 				serv.DataBuffer = append(serv.DataBuffer, data)
-				fmt.Printf("ListenAndSave: DataBuffer size=%d, last key=%s\n", len(serv.DataBuffer), reflect.ValueOf(data).MapKeys())
-				slog.Debug("Received data", "buffer_size", len(serv.DataBuffer)) // Tick log
 				serv.mu.Unlock()
 			}
 		}
@@ -221,19 +217,31 @@ func (serv *DataModeServiceImp) GetAggregatedDataByDuration(exchange, symbol str
 	serv.mu.Lock()
 	defer serv.mu.Unlock()
 
-	cutoff := time.Now().Add(-duration)
+	cutoff := time.Now().Add(-duration - 10*time.Second)
 
 	var latest []map[string]domain.ExchangeData
-	key := exchange + " " + symbol
-	fmt.Printf("GetAggregatedDataByDuration: exchange=%s, symbol=%s, key=%s, cutoff=%v\n", exchange, symbol, key, cutoff)
+	var lastSeen *domain.ExchangeData
 
 	for i := len(serv.DataBuffer) - 1; i >= 0; i-- {
 		m := serv.DataBuffer[i]
 		data, ok := m[exchange+" "+symbol]
-		fmt.Printf("DataBuffer: index=%d, key=%s, found=%v, timestamp=%v\n", i, key, ok, data.Timestamp)
-		if ok && !data.Timestamp.Before(cutoff) {
-			latest = append(latest, m)
+		if ok {
+			lastSeen = &data
+			if !data.Timestamp.Before(cutoff) {
+				latest = append(latest, m)
+			}
 		}
 	}
+	if len(latest) == 0 && lastSeen != nil {
+		fmt.Println("DEBUG: nothing matched cutoff =", cutoff)
+		fmt.Println("DEBUG: buffer length =", len(serv.DataBuffer))
+		for i := len(serv.DataBuffer) - 1; i >= 0; i-- {
+			m := serv.DataBuffer[i]
+			if d, ok := m[exchange+" "+symbol]; ok {
+				fmt.Println("BUFFER ENTRY:", d.Exchange, d.Pair_name, d.Timestamp)
+			}
+		}
+	}
+
 	return latest
 }

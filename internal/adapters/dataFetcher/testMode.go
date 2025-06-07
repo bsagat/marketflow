@@ -17,8 +17,8 @@ func NewTestModeFetcher() *TestMode {
 }
 
 func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
-	ch := make(chan map[string]domain.ExchangeData, 100)
-	ch2 := make(chan []domain.Data, 100)
+	rawFlow := make(chan []domain.Data, 100)
+
 	pairs := []string{"BTCUSDT", "DOGEUSDT", "TONUSDT", "SOLUSDT", "ETHUSDT"}
 	exchanges := []string{"Exchange1", "Exchange2", "Exchange3"}
 	basePrices := map[string]float64{
@@ -32,25 +32,16 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 		for {
 			select {
 			case <-m.stop:
-				close(ch)
-				close(ch2)
+				close(rawFlow)
 				return
 			case <-ticker.C:
-				data := make(map[string]domain.ExchangeData)
-				rawData := make([]domain.Data, 0, len(pairs)*len(exchanges))
+				var rawData []domain.Data
 				now := time.Now()
+
 				for _, ex := range exchanges {
 					for _, pair := range pairs {
 						// Generate random price fluctuation (±15%)
 						price := basePrices[pair] * (1 + (rand.Float64()-0.5)*0.3)
-						data[ex+"-"+pair] = domain.ExchangeData{
-							Pair_name:     pair,
-							Exchange:      ex,
-							Timestamp:     now,
-							Average_price: price, // Use Average_price as per your struct
-							Min_price:     price, // Set Min/Max same for real-time update
-							Max_price:     price,
-						}
 						rawData = append(rawData, domain.Data{
 							ExchangeName: ex,
 							Symbol:       pair,
@@ -59,42 +50,45 @@ func (m *TestMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 						})
 					}
 				}
-				for _, pair := range pairs {
-					var sum, min, max float64
-					count := 0
-					for _, ex := range exchanges {
-						if d, ok := data[ex+" "+pair]; ok {
-							sum += d.Average_price
-							if min == 0 || d.Min_price < min {
-								min = d.Min_price
-							}
-							if d.Max_price > max {
-								max = d.Max_price
-							}
-							count++
-						}
-					}
-					if count > 0 {
-						key := "All " + pair
-						data[key] = domain.ExchangeData{
-							Pair_name:     pair,
-							Exchange:      "All",
-							Timestamp:     now,
-							Average_price: sum / float64(count),
-							Min_price:     min,
-							Max_price:     max,
-						}
-					}
-				}
-				ch <- data
-				ch2 <- rawData
+
+				rawFlow <- rawData
 
 			}
 		}
 	}()
 
-	// close(ch)
-	return ch, ch2, nil
+	aggregatedCh, rawCh := Aggregate(rawFlow)
+	return aggregatedCh, rawCh, nil
+
+}
+func AggregateFromTestMode(input chan []domain.Data) (chan map[string]domain.ExchangeData, chan []domain.Data) {
+	aggregated := make(chan map[string]domain.ExchangeData, 100)
+	raw := make(chan []domain.Data, 100)
+
+	go func() {
+		for data := range input {
+			// просто пробрасываем
+			raw <- data
+
+			agg := make(map[string]domain.ExchangeData)
+			now := time.Now()
+
+			for _, d := range data {
+				key := d.ExchangeName + " " + d.Symbol
+				agg[key] = domain.ExchangeData{
+					Pair_name:     d.Symbol,
+					Exchange:      d.ExchangeName,
+					Timestamp:     now,
+					Average_price: d.Price,
+					Min_price:     d.Price,
+					Max_price:     d.Price,
+				}
+			}
+			aggregated <- agg
+		}
+	}()
+
+	return aggregated, raw
 }
 
 func (m *TestMode) CheckHealth() error {
