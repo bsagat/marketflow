@@ -4,8 +4,7 @@ EXCH1=build/exchange_images/exchange1_amd64.tar
 EXCH2=build/exchange_images/exchange2_amd64.tar
 EXCH3=build/exchange_images/exchange3_amd64.tar
 
-DC=docker-compose -f build/docker-compose.yml
-
+DC=docker-compose 
 load-images:
 	@echo "🌀 Loading exchange images..."
 	docker load -i $(EXCH1)

@@ -44,7 +44,7 @@ func setupApp() (*http.Server, func()) {
 
 	router := app.Setup(repo, cacheMemory, datafetchServ)
 	srv := &http.Server{
-		Addr:    "localhost:" + *domain.Port,
+		Addr:    ":" + *domain.Port,
 		Handler: router,
 	}
 

@@ -16,7 +16,7 @@ import (
 func init() {
 	checkFlags()
 
-	if err := envzilla.Loader("build/.env"); err != nil {
+	if err := envzilla.Loader(".env"); err != nil {
 		log.Fatalf("Config file load error: %s", err.Error())
 	}
 }
@@ -53,7 +53,6 @@ func checkFlags() {
 	if *domain.HelpFlag {
 		printHelp()
 	}
-
 }
 
 // Prints help message

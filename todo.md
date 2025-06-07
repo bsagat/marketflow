@@ -74,20 +74,20 @@ http://localhost:8080/prices/highest/BTCUSDT✅
 данные есть хз праввильно?:
 http://localhost:8080/prices/highest/Exchange1/BTCUSDT✅
 Not work in test:
-http://localhost:8080/prices/highest/BTCUSDT?period=1s 
-http://localhost:8080/prices/highest/Exchange1/BTCUSDT?period=1s
+http://localhost:8080/prices/highest/BTCUSDT?period=1s ✅
+http://localhost:8080/prices/highest/Exchange1/BTCUSDT?period=1s✅
 
 
-http://localhost:8080/prices/lowest/BTCUSDT
+http://localhost:8080/prices/lowest/BTCUSDT✅
 
 not in test:
-http://localhost:8080/prices/lowest/Exchange1/BTCUSDT
-http://localhost:8080/prices/lowest/BTCUSDT?period=1s
-http://localhost:8080/prices/lowest/Exchange1/BTCUSDT?period=1s
+http://localhost:8080/prices/lowest/Exchange1/BTCUSDT✅
+http://localhost:8080/prices/lowest/BTCUSDT?period=1s✅
+http://localhost:8080/prices/lowest/Exchange1/BTCUSDT?period=1s✅
 
-http://localhost:8080/prices/average/BTCUSDT
-http://localhost:8080/prices/average/Exchange1/BTCUSDT
-http://localhost:8080/prices/average/Exchange1/BTCUSDT?period=1s
+http://localhost:8080/prices/average/BTCUSDT✅
+http://localhost:8080/prices/average/Exchange1/BTCUSDT✅
+http://localhost:8080/prices/average/Exchange1/BTCUSDT?period=1s✅
 
 localhost:8080/health
 Check health
@@ -136,12 +136,12 @@ In test mode ticks goes much faster tahn in live. In live it is is like one per 
 
 
 testcases
-Проверить Датапарсинг если же редис будет отключен
-Проверить запросы с таймлайном для макс и мин прайсов
+Проверить Датапарсинг если же редис будет отключен ✅
+Проверить запросы с таймлайном для макс и мин прайсов ✅
 Проверить все запросы если поменять режимы много раз (25 раз допустим) для двух режимов
-Проверить все запросы если база данных будет пустой
-Проверить на гонку данных
+Проверить все запросы если база данных будет пустой ✅
+Проверить на гонку данных ✅
 
 
-Проверяем все обратно когда приложение упаковано внутри докера
-Проверяем все запросы если наше приложение запущено на другом порте
+Проверяем все обратно когда приложение упаковано внутри докера ✅
+Проверяем все запросы если наше приложение запущено на другом порте✅

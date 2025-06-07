@@ -25,6 +25,7 @@ type Exchange struct {
 
 type LiveMode struct {
 	Exchanges []*Exchange
+	mu        sync.Mutex
 }
 
 func NewLiveModeFetcher() *LiveMode {
@@ -44,7 +45,6 @@ func (m *LiveMode) CheckHealth() error {
 		default:
 			continue
 		}
-
 	}
 	if len(unhealthy) != 0 {
 		return errors.New("unhealthy exchanges: " + unhealthy)
@@ -53,6 +53,8 @@ func (m *LiveMode) CheckHealth() error {
 }
 
 func (m *LiveMode) Close() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for i := 0; i < len(m.Exchanges); i++ {
 		if m.Exchanges[i] == nil || m.Exchanges[i].conn == nil {
 			continue
@@ -65,7 +67,6 @@ func (m *LiveMode) Close() {
 
 		m.Exchanges[i].closeCh <- true
 	}
-
 }
 
 func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan []domain.Data, error) {
@@ -74,10 +75,11 @@ func (m *LiveMode) SetupDataFetcher() (chan map[string]domain.ExchangeData, chan
 	wg := &sync.WaitGroup{}
 
 	ports := []string{os.Getenv("EXCHANGE1_PORT"), os.Getenv("EXCHANGE2_PORT"), os.Getenv("EXCHANGE3_PORT")}
+	exchHosts := []string{os.Getenv("EXCHANGE1_NAME"), os.Getenv("EXCHANGE2_NAME"), os.Getenv("EXCHANGE3_NAME")}
 
 	for i := 0; i < len(ports); i++ {
 		wg.Add(1)
-		exch, err := GenerateExchange("Exchange"+strconv.Itoa(i+1), "0.0.0.0:"+ports[i])
+		exch, err := GenerateExchange("Exchange"+strconv.Itoa(i+1), exchHosts[i]+":"+ports[i])
 		if err != nil {
 			log.Printf("Failed to connect exchange number: %d, error: %s", i+1, err.Error())
 			wg.Done()
@@ -122,7 +124,6 @@ func Aggregate(mergedCh chan []domain.Data) (chan map[string]domain.ExchangeData
 	rawDataCh := make(chan []domain.Data)
 
 	go func() {
-
 		for dataBatch := range mergedCh {
 
 			// To prevent the main thread from being delayed
@@ -261,7 +262,6 @@ func MergeFlows(dataFlows [3]chan domain.Data) chan []domain.Data {
 				break mainLoop
 			}
 		}
-
 	}()
 
 	go func() {
